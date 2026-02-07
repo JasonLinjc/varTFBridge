@@ -1,7 +1,7 @@
 # varTFBridge
 
 <p align="center">
-  <img src="logo.png" alt="Logo">
+  <img src="logo.png" alt="Logo" width="400">
 </p>
 
 ## Genome-wide maps of transcription factor footprints identify noncoding variants rewiring gene regulatory networks
