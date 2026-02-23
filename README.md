@@ -61,25 +61,13 @@ cd varTFBridge
 
 ## Scripts
 
-**Data preparation**
-
-| Script | Description |
-|--------|-------------|
-| `scripts/comvar_liftover_snpRes.py` | Liftover GWFM `.snpRes` files from hg19 to hg38 coordinates |
-| `scripts/comvar_filter_credible_set.py` | Filter variants by PIP threshold and annotate with LCS credible-set info (PEP_cs, CS_id) |
-
-**Common variant VAR2TFBS** (two-step pipeline)
-
-| Script | Description |
-|--------|-------------|
-| `scripts/comvar_overlap_foodie_footprints.py` | Step 1 — Overlap GWFM common variants with FOODIE footprint BED files |
-| `scripts/comvar_var2tfbs.py` | Step 2 — Predict variant effects on TF binding via FIMO motif scanning |
-
-**Rare variant VAR2TFBS**
-
-| Script | Description |
-|--------|-------------|
-| `scripts/rarevar_var2tfbs.py` | Identify driver rare variants from burden-test LOO analysis and predict TF binding effects |
+| Pipeline               | Script                                       | Description                                                                         |
+|------------------------|----------------------------------------------|-------------------------------------------------------------------------------------|
+| Data preparation       | `scripts/comvar_liftover_snpRes.py`          | Liftover GWFM `.snpRes` files from hg19 to hg38 coordinates                        |
+| Data preparation       | `scripts/comvar_filter_credible_set.py`      | Filter variants by PIP threshold and annotate with LCS credible-set info            |
+| Common variant VAR2TFBS | `scripts/comvar_overlap_foodie_footprints.py` | Step 1 — Overlap GWFM common variants with FOODIE footprint BED files               |
+| Common variant VAR2TFBS | `scripts/comvar_var2tfbs.py`                  | Step 2 — Predict variant effects on TF binding via FIMO motif scanning              |
+| Rare variant VAR2TFBS  | `scripts/rarevar_var2tfbs.py`                | Identify driver rare variants from burden-test LOO and predict TF binding effects   |
 
 ## Data
 
@@ -90,6 +78,7 @@ cd varTFBridge
 ## Usage
 
 ### FOODIE Footprint Calling
+
 ```bash
 # See https://github.com/sunneyxie-lab/bulk-foodie-pipeline
 ```
@@ -102,24 +91,24 @@ Genome-wide fine-mapping (GWFM) uses [GCTB 2.5.4](https://gctbhub.cloud.edu.au/s
 
 **Output files per trait**:
 
-| File | Description | Key columns |
-|------|-------------|-------------|
-| **`.snpRes`** | Genome-wide SNP results (hg19) | Index, Name, Chrom, Position, A1, A2, A1Frq, A1Effect, SE, VarExplained, PEP, Pi1–Pi5, PIP, GelmanRubin_R |
-| **`.lcs`** | Local credible sets | CS, Size, PIP, PGV, PGVenrich, PEP, SNP (comma-separated), ENSGID_hg19, GeneName_hg19 |
-| **`.lcsRes`** | Credible set summary | PIP/PEP thresholds, # sets, avg size, estimated causal variants, variance explained |
-| **`.gcs`** | Global credible sets (hg38) | Chromosome, Start, End, SNP, A1, A2, freq, b, se, p, N, PIP |
+| File          | Description                    | Key columns                                                                                    |
+|---------------|--------------------------------|------------------------------------------------------------------------------------------------|
+| **`.snpRes`** | Genome-wide SNP results (hg19) | Index, Name, Chrom, Position, A1, A2, A1Frq, A1Effect, SE, VarExplained, PEP, Pi1–Pi5, PIP   |
+| **`.lcs`**    | Local credible sets            | CS, Size, PIP, PGV, PGVenrich, PEP, SNP (comma-separated), ENSGID_hg19, GeneName_hg19        |
+| **`.lcsRes`** | Credible set summary           | PIP/PEP thresholds, # sets, avg size, estimated causal variants, variance explained            |
+| **`.gcs`**    | Global credible sets (hg38)    | Chromosome, Start, End, SNP, A1, A2, freq, b, se, p, N, PIP                                   |
 
 **Blood cell traits analysed** (13 erythroid + 2 others):
 
-| Trait | Description | Trait | Description |
-|-------|-------------|-------|-------------|
-| HC | Hemoglobin concentration | MCH | Mean corpuscular hemoglobin |
-| HP | Hemoglobin percentage | MCHC | Mean corpuscular hemoglobin concentration |
-| HLDRC | High light scatter reticulocyte count | MCV | Mean corpuscular volume |
-| HLSRP | High light scatter reticulocyte percentage | MSCV | Mean sphered cell volume |
-| IRF | Immature reticulocyte fraction | RBC | Red blood cell count |
-| RC | Reticulocyte count | RBCDW | RBC distribution width |
-| RP | Reticulocyte percentage | | |
+| Trait   | Description                                | Trait   | Description                                |
+|---------|--------------------------------------------|---------|--------------------------------------------|
+| HC      | Hemoglobin concentration                   | MCH     | Mean corpuscular hemoglobin                |
+| HP      | Hemoglobin percentage                      | MCHC    | Mean corpuscular hemoglobin concentration  |
+| HLDRC   | High light scatter reticulocyte count      | MCV     | Mean corpuscular volume                    |
+| HLSRP   | High light scatter reticulocyte percentage | MSCV    | Mean sphered cell volume                   |
+| IRF     | Immature reticulocyte fraction             | RBC     | Red blood cell count                       |
+| RC      | Reticulocyte count                         | RBCDW   | RBC distribution width                     |
+| RP      | Reticulocyte percentage                    |         |                                            |
 
 ### snpRes Liftover (hg19 → hg38)
 
@@ -175,14 +164,14 @@ python scripts/comvar_overlap_foodie_footprints.py \
     --out-dir results/comvar_footprint_overlap_snpRes
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--snp-dir` | (required) | Directory of GWFM common variant files (CSV or snpRes) |
-| `--footprint-dir` | (required) | Directory of FOODIE footprint BED files |
-| `--out-dir` | `./results/comvar_footprint_overlap` | Output directory |
-| `--pip-threshold` | `0` | Minimum PIP to include per trait |
-| `--snp-suffix` | `_credible_set_hg38.csv` | Suffix to strip for trait names |
-| `--lcs-dir` | (optional) | Directory of .lcs files for PEP_cs/CS_id annotation |
+| Option             | Default                            | Description                                         |
+|--------------------|------------------------------------|-----------------------------------------------------|
+| `--snp-dir`        | (required)                         | Directory of GWFM common variant files (CSV or snpRes) |
+| `--footprint-dir`  | (required)                         | Directory of FOODIE footprint BED files             |
+| `--out-dir`        | `./results/comvar_footprint_overlap` | Output directory                                  |
+| `--pip-threshold`  | `0`                                | Minimum PIP to include per trait                    |
+| `--snp-suffix`     | `_credible_set_hg38.csv`          | Suffix to strip for trait names                     |
+| `--lcs-dir`        | (optional)                         | Directory of `.lcs` files for PEP_cs/CS_id annotation |
 
 Output: per-trait CSVs (`{out_dir}/{footprint}/{trait}_{footprint}.csv`) with columns SNP, Chromosome, Start, End, A1, A2, freq, PIP, PEP, PEP_cs, CS_id, footprint_region, plus combined BED files per footprint.
 
@@ -199,15 +188,15 @@ python scripts/comvar_var2tfbs.py \
     --out-dir results/comvar_var2tfbs_results
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--input-bed` | (required) | Merged BED from Step 1 (e.g. `GWFM_variants_in_K562.merged.hg38.bed`) |
-| `--allele-src` | (required) | Directory of per-trait CSVs or single CSV with SNP, A1, A2 |
-| `--ref-genome` | (required) | Path to hg38.fa reference genome |
-| `--jaspar-meme` | (required) | Path to JASPAR MEME motif file |
-| `--out-dir` | `./results/comvar_var2tfbs_results` | Output directory |
-| `--ext-bp` | `30` | Sequence extension in bp around footprint |
-| `--fimo-threshold` | `0.0001` | FIMO p-value threshold |
+| Option            | Default                              | Description                                                    |
+|-------------------|--------------------------------------|----------------------------------------------------------------|
+| `--input-bed`     | (required)                           | Merged BED from Step 1 (e.g. `GWFM_variants_in_K562.merged.hg38.bed`) |
+| `--allele-src`    | (required)                           | Directory of per-trait CSVs or single CSV with SNP, A1, A2    |
+| `--ref-genome`    | (required)                           | Path to hg38.fa reference genome                              |
+| `--jaspar-meme`   | (required)                           | Path to JASPAR MEME motif file                                |
+| `--out-dir`       | `./results/comvar_var2tfbs_results`  | Output directory                                              |
+| `--ext-bp`        | `30`                                 | Sequence extension in bp around footprint                     |
+| `--fimo-threshold` | `0.0001`                            | FIMO p-value threshold                                        |
 
 Output: `{out_dir}/{cell}_var2tfbs.csv` with ref/alt FIMO hits, TF change classification (Create/Disrupt/Increase/Decrease/Unchange), and FASTA files in `{out_dir}/fasta/`.
 
@@ -224,36 +213,37 @@ python scripts/rarevar_var2tfbs.py \
     --out-dir results/rarevar_var2tfbs_results
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--burden-dir` | (required) | Directory of burden test result Excel files (one per trait) |
-| `--loo-file` | (required) | Leave-one-out results CSV (all traits combined) |
-| `--ref-genome` | (required) | Path to hg38.fa reference genome |
-| `--jaspar-meme` | (required) | Path to JASPAR MEME motif file |
-| `--out-dir` | `./results/rarevar_var2tfbs_results` | Output directory |
-| `--sig-threshold` | Bonferroni (0.05/N) | Burden test significance threshold |
-| `--min-carrier` | `30` | Minimum MAC for at least one variant in footprint |
-| `--ext-bp` | `30` | Sequence extension in bp around footprint |
-| `--fimo-threshold` | `0.0001` | FIMO p-value threshold |
+| Option            | Default                                | Description                                               |
+|-------------------|----------------------------------------|-----------------------------------------------------------|
+| `--burden-dir`    | (required)                             | Directory of burden test result Excel files (one per trait) |
+| `--loo-file`      | (required)                             | Leave-one-out results CSV (all traits combined)           |
+| `--ref-genome`    | (required)                             | Path to hg38.fa reference genome                          |
+| `--jaspar-meme`   | (required)                             | Path to JASPAR MEME motif file                            |
+| `--out-dir`       | `./results/rarevar_var2tfbs_results`   | Output directory                                          |
+| `--sig-threshold` | Bonferroni (0.05/N)                    | Burden test significance threshold                        |
+| `--min-carrier`   | `30`                                   | Minimum MAC for at least one variant in footprint         |
+| `--ext-bp`        | `30`                                   | Sequence extension in bp around footprint                 |
+| `--fimo-threshold` | `0.0001`                              | FIMO p-value threshold                                    |
 
 Output: `driver_variants_summary.csv` (driver variants per trait-footprint) and `K562_rarevar_var2tfbs.csv` (TF binding effect predictions).
 
 ### ABC-FP-Max Predictions
+
 Adapted from the [ABC model](https://github.com/broadinstitute/ABC-Enhancer-Gene-Prediction) to link TF footprints to target genes using:
+
 - Chromatin accessibility (ATAC-seq)
 - Hi-C contact frequency
 - Footprint activity scores
 
 ## Methods
 
-| Component | Description |
-|-----------|-------------|
-| **FOODIE** | Single-molecule deaminase footprinting for near-base-resolution TF binding detection |
-| **GWFM** | Genome-wide fine-mapping using SBayesRC producing global (GCS) and local (LCS) credible sets with PIP, PEP, and PGV |
-| **VAR2TFBS** | FIMO-based scanning to assess variant effects on TF binding motifs |
-| **ABC-FP-Max** | Footprint-to-gene linkage scoring combining activity and chromatin contact |
-| **AlphaGenome** | Deep learning model for cell-type-specific variant effect prediction |
-
+| Component        | Description                                                                                             |
+|------------------|---------------------------------------------------------------------------------------------------------|
+| **FOODIE**       | Single-molecule deaminase footprinting for near-base-resolution TF binding detection                    |
+| **GWFM**         | Genome-wide fine-mapping using SBayesRC producing global (GCS) and local (LCS) credible sets with PIP, PEP, and PGV |
+| **VAR2TFBS**     | FIMO-based scanning to assess variant effects on TF binding motifs                                      |
+| **ABC-FP-Max**   | Footprint-to-gene linkage scoring combining activity and chromatin contact                              |
+| **AlphaGenome**  | Deep learning model for cell-type-specific variant effect prediction                                    |
 
 ## License
 
