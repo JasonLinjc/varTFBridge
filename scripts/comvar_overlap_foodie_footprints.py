@@ -8,13 +8,13 @@ credible set CSV and snpRes (tab-delimited) formats with auto-detection.
 
 Usage:
     # Using credible set files:
-    python overlap_foodie_footprints.py \
+    python scripts/comvar_overlap_foodie_footprints.py \
         --snp-dir data/GWFM_erythroids/credible_set_snpRes \
         --footprint-dir data/FOODIE_footprints \
         --out-dir results/comvar_footprint_overlap
 
     # Using full snpRes_hg38 files:
-    python overlap_foodie_footprints.py \
+    python scripts/comvar_overlap_foodie_footprints.py \
         --snp-dir data/GWFM_erythroids/snpRes_hg38 \
         --snp-suffix .snpRes \
         --footprint-dir data/FOODIE_footprints \
@@ -91,12 +91,12 @@ def parse_args():
         epilog="""
 Examples:
   # Using credible set files (filtered by PIP/PEP):
-  python overlap_foodie_footprints.py \\
+  python scripts/comvar_overlap_foodie_footprints.py \\
       --snp-dir data/GWFM_erythroids/credible_set_snpRes \\
       --footprint-dir data/FOODIE_footprints
 
   # Using full snpRes_hg38 files (all ~13M common variants):
-  python overlap_foodie_footprints.py \\
+  python scripts/comvar_overlap_foodie_footprints.py \\
       --snp-dir data/GWFM_erythroids/snpRes_hg38 \\
       --snp-suffix .snpRes \\
       --footprint-dir data/FOODIE_footprints \\

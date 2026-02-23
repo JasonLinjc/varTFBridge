@@ -7,7 +7,7 @@ Since all snpRes files share the same common variant positions, liftover is
 performed once using the first file, then applied to all.
 
 Usage:
-    python scripts/liftover_snpRes.py \
+    python scripts/comvar_liftover_snpRes.py \
         --snpres-dir data/GWFM_erythroids/snpRes \
         --chain data/reference/hg19ToHg38.over.chain.gz \
         --out-dir data/GWFM_erythroids/snpRes_hg38

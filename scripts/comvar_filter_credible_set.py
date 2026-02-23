@@ -7,7 +7,7 @@ Annotates each variant with LCS credible-set-level PEP (PEP_cs) and
 credible set ID (CS_id) by matching SNP IDs to exploded LCS files.
 
 Usage:
-    python scripts/filter_credible_set.py \
+    python scripts/comvar_filter_credible_set.py \
         --snpres-dir data/GWFM_erythroids/snpRes_hg38 \
         --lcs-dir data/GWFM_erythroids/lcs \
         --out-dir data/GWFM_erythroids/credible_set_snpRes

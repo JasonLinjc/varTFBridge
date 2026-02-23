@@ -61,13 +61,25 @@ cd varTFBridge
 
 ## Scripts
 
+**Data preparation**
+
 | Script | Description |
 |--------|-------------|
-| `scripts/liftover_snpRes.py` | Liftover GWFM snpRes files from hg19 to hg38 coordinates |
-| `scripts/filter_credible_set.py` | Filter variants by PIP threshold and annotate with LCS credible set info |
-| `scripts/overlap_foodie_footprints.py` | VAR2TFBS Step 1: Overlap GWFM variants with FOODIE footprint BED files |
-| `scripts/comvar_var2tfbs.py` | VAR2TFBS Step 2: Predict variant effects on TF binding via FIMO motif scanning |
-| `scripts/rarevar_var2tfbs.py` | Rare variant VAR2TFBS: identify driver variants from burden test LOO and predict TF binding effects |
+| `scripts/comvar_liftover_snpRes.py` | Liftover GWFM `.snpRes` files from hg19 to hg38 coordinates |
+| `scripts/comvar_filter_credible_set.py` | Filter variants by PIP threshold and annotate with LCS credible-set info (PEP_cs, CS_id) |
+
+**Common variant VAR2TFBS** (two-step pipeline)
+
+| Script | Description |
+|--------|-------------|
+| `scripts/comvar_overlap_foodie_footprints.py` | Step 1 — Overlap GWFM common variants with FOODIE footprint BED files |
+| `scripts/comvar_var2tfbs.py` | Step 2 — Predict variant effects on TF binding via FIMO motif scanning |
+
+**Rare variant VAR2TFBS**
+
+| Script | Description |
+|--------|-------------|
+| `scripts/rarevar_var2tfbs.py` | Identify driver rare variants from burden-test LOO analysis and predict TF binding effects |
 
 ## Data
 
@@ -114,7 +126,7 @@ Genome-wide fine-mapping (GWFM) uses [GCTB 2.5.4](https://gctbhub.cloud.edu.au/s
 The `.snpRes` files from GCTB use hg19 coordinates. Liftover to hg38 and add `Chromosome_hg38`, `Start_hg38`, `End_hg38` columns:
 
 ```bash
-python scripts/liftover_snpRes.py \
+python scripts/comvar_liftover_snpRes.py \
     --snpres-dir data/GWFM_erythroids/snpRes \
     --chain data/reference/hg19ToHg38.over.chain.gz \
     --out-dir data/GWFM_erythroids/snpRes_hg38
@@ -127,7 +139,7 @@ Since all traits share the same variant set (~13M), the liftover is performed on
 Filter snpRes_hg38 common variants by PIP threshold and annotate with LCS credible set information (PEP_cs, CS_id):
 
 ```bash
-python scripts/filter_credible_set.py \
+python scripts/comvar_filter_credible_set.py \
     --snpres-dir data/GWFM_erythroids/snpRes_hg38 \
     --lcs-dir data/GWFM_erythroids/lcs \
     --out-dir data/GWFM_erythroids/credible_set_snpRes \
@@ -145,7 +157,7 @@ Identify GWFM common variants that fall within FOODIE TF footprints. The script 
 **Using credible set files** (filtered by PIP/PEP thresholds):
 
 ```bash
-python scripts/overlap_foodie_footprints.py \
+python scripts/comvar_overlap_foodie_footprints.py \
     --snp-dir data/GWFM_erythroids/credible_set_snpRes \
     --footprint-dir data/FOODIE_footprints \
     --lcs-dir data/GWFM_erythroids/lcs \
@@ -155,7 +167,7 @@ python scripts/overlap_foodie_footprints.py \
 **Using full snpRes_hg38 files** (all ~13M common variants per trait):
 
 ```bash
-python scripts/overlap_foodie_footprints.py \
+python scripts/comvar_overlap_foodie_footprints.py \
     --snp-dir data/GWFM_erythroids/snpRes_hg38 \
     --snp-suffix .snpRes \
     --footprint-dir data/FOODIE_footprints \
@@ -249,7 +261,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contact
 
-For questions and feedback, please open an issue on GitHub or contact Jiecong Lin (jieconglin(at)outlook.com).
+For questions and feedback, please open an issue on GitHub or contact Jiecong Lin (jieconglin@cpl.ac.cn) and Yajie Zhao (yajiezhao@cpl.ac.cn).
 
 <p align="center">
   <img src="logo.png" alt="Logo" width="400">
