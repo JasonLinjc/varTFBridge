@@ -1,7 +1,7 @@
 # varTFBridge
 
 <p align="center">
-  <img src="logo.png" alt="Logo" width="400">
+  <img src="workflow.png" alt="Workflow" width="800">
 </p>
 
 ## Genome-wide maps of transcription factor footprints identify noncoding variants rewiring gene regulatory networks
@@ -221,3 +221,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Contact
 
 For questions and feedback, please open an issue on GitHub or contact Jiecong Lin.
+
+<p align="center">
+  <img src="logo.png" alt="Logo" width="400">
+</p>
