@@ -1,0 +1,24 @@
+# Large data files (>100MB)
+data/GWAS_erythroids/
+data/GWFM_erythroids/
+data/reference/hg38.fa
+data/alphagenome_results/K562_credible_comvar_pip70.tsv
+
+# OS files
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Output directories
+overlap_results/
+data/results/
+
+# Claude Code
+CLAUDE.md
+.claude/
