@@ -1,4 +1,4 @@
-# Genome-wide maps of transcription factor footprints identify noncoding variants rewiring gene regulatory networks with varTFBridge
+# varTFBridge: genome-wide maps of transcription factor footprints identify noncoding variants rewiring gene regulatory networks
 
 <p align="center">
   <img src="workflow.png" alt="Workflow" width="800">
@@ -149,7 +149,7 @@ python scripts/overlap_foodie_footprints.py \
     --snp-dir data/GWFM_erythroids/credible_set_snpRes \
     --footprint-dir data/FOODIE_footprints \
     --lcs-dir data/GWFM_erythroids/lcs \
-    --out-dir comvar_footprint_overlap
+    --out-dir results/comvar_footprint_overlap
 ```
 
 **Using full snpRes_hg38 files** (all ~13M common variants per trait):
@@ -160,14 +160,14 @@ python scripts/overlap_foodie_footprints.py \
     --snp-suffix .snpRes \
     --footprint-dir data/FOODIE_footprints \
     --lcs-dir data/GWFM_erythroids/lcs \
-    --out-dir comvar_footprint_overlap_snpRes
+    --out-dir results/comvar_footprint_overlap_snpRes
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--snp-dir` | (required) | Directory of GWFM common variant files (CSV or snpRes) |
 | `--footprint-dir` | (required) | Directory of FOODIE footprint BED files |
-| `--out-dir` | `./comvar_footprint_overlap` | Output directory |
+| `--out-dir` | `./results/comvar_footprint_overlap` | Output directory |
 | `--pip-threshold` | `0` | Minimum PIP to include per trait |
 | `--snp-suffix` | `_credible_set_hg38.csv` | Suffix to strip for trait names |
 | `--lcs-dir` | (optional) | Directory of .lcs files for PEP_cs/CS_id annotation |
@@ -180,11 +180,11 @@ Trait-agnostic: takes the merged BED from Step 1 (all unique variants across tra
 
 ```bash
 python scripts/comvar_var2tfbs.py \
-    --input-bed comvar_footprint_overlap_credible/GWFM_variants_in_K562.merged.hg38.bed \
-    --allele-src comvar_footprint_overlap_credible/K562.merged.hg38 \
+    --input-bed results/comvar_footprint_overlap_credible/GWFM_variants_in_K562.merged.hg38.bed \
+    --allele-src results/comvar_footprint_overlap_credible/K562.merged.hg38 \
     --ref-genome data/reference/hg38.fa \
     --jaspar-meme data/JASPAR_MEME/JASPAR2024_CORE_vertebrates_non-redundant_pfms_meme.txt \
-    --out-dir comvar_var2tfbs_results
+    --out-dir results/comvar_var2tfbs_results
 ```
 
 | Option | Default | Description |
@@ -193,7 +193,7 @@ python scripts/comvar_var2tfbs.py \
 | `--allele-src` | (required) | Directory of per-trait CSVs or single CSV with SNP, A1, A2 |
 | `--ref-genome` | (required) | Path to hg38.fa reference genome |
 | `--jaspar-meme` | (required) | Path to JASPAR MEME motif file |
-| `--out-dir` | `./comvar_var2tfbs_results` | Output directory |
+| `--out-dir` | `./results/comvar_var2tfbs_results` | Output directory |
 | `--ext-bp` | `30` | Sequence extension in bp around footprint |
 | `--fimo-threshold` | `0.0001` | FIMO p-value threshold |
 
@@ -209,7 +209,7 @@ python scripts/rarevar_var2tfbs.py \
     --loo-file data/leaveoneout_results/K562.leave_one_out.all_traits.20251120.csv \
     --ref-genome data/reference/hg38.fa \
     --jaspar-meme data/JASPAR_MEME/JASPAR2024_CORE_vertebrates_non-redundant_pfms_meme.txt \
-    --out-dir rarevar_var2tfbs_results
+    --out-dir results/rarevar_var2tfbs_results
 ```
 
 | Option | Default | Description |
@@ -218,7 +218,7 @@ python scripts/rarevar_var2tfbs.py \
 | `--loo-file` | (required) | Leave-one-out results CSV (all traits combined) |
 | `--ref-genome` | (required) | Path to hg38.fa reference genome |
 | `--jaspar-meme` | (required) | Path to JASPAR MEME motif file |
-| `--out-dir` | `./rarevar_var2tfbs_results` | Output directory |
+| `--out-dir` | `./results/rarevar_var2tfbs_results` | Output directory |
 | `--sig-threshold` | Bonferroni (0.05/N) | Burden test significance threshold |
 | `--min-carrier` | `30` | Minimum MAC for at least one variant in footprint |
 | `--ext-bp` | `30` | Sequence extension in bp around footprint |
@@ -249,7 +249,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contact
 
-For questions and feedback, please open an issue on GitHub or contact Jiecong Lin.
+For questions and feedback, please open an issue on GitHub or contact Jiecong Lin (jieconglin(at)outlook.com).
 
 <p align="center">
   <img src="logo.png" alt="Logo" width="400">

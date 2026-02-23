@@ -17,11 +17,11 @@ Input:
 
 Usage:
     python scripts/comvar_var2tfbs.py \
-        --input-bed comvar_footprint_overlap_credible/GWFM_variants_in_K562.merged.hg38.bed \
-        --allele-src comvar_footprint_overlap_credible/K562.merged.hg38 \
+        --input-bed results/comvar_footprint_overlap_credible/GWFM_variants_in_K562.merged.hg38.bed \
+        --allele-src results/comvar_footprint_overlap_credible/K562.merged.hg38 \
         --ref-genome data/reference/hg38.fa \
         --jaspar-meme data/JASPAR_MEME/JASPAR2024_CORE_vertebrates_non-redundant_pfms_meme.txt \
-        --out-dir comvar_var2tfbs_results
+        --out-dir results/comvar_var2tfbs_results
 """
 
 import argparse
@@ -408,8 +408,8 @@ def parse_args():
     p.add_argument("--ref-genome", required=True, help="Path to hg38.fa reference genome")
     p.add_argument("--jaspar-meme", required=True, help="Path to JASPAR MEME motif file")
     p.add_argument(
-        "--out-dir", default="./comvar_var2tfbs_results",
-        help="Output directory (default: ./comvar_var2tfbs_results)",
+        "--out-dir", default="./results/comvar_var2tfbs_results",
+        help="Output directory (default: ./results/comvar_var2tfbs_results)",
     )
     p.add_argument("--ext-bp", type=int, default=30, help="Sequence extension in bp (default: 30)")
     p.add_argument("--fimo-threshold", type=float, default=0.0001, help="FIMO p-value threshold (default: 0.0001)")

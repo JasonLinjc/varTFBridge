@@ -11,14 +11,14 @@ Usage:
     python overlap_foodie_footprints.py \
         --snp-dir data/GWFM_erythroids/credible_set_snpRes \
         --footprint-dir data/FOODIE_footprints \
-        --out-dir comvar_footprint_overlap
+        --out-dir results/comvar_footprint_overlap
 
     # Using full snpRes_hg38 files:
     python overlap_foodie_footprints.py \
         --snp-dir data/GWFM_erythroids/snpRes_hg38 \
         --snp-suffix .snpRes \
         --footprint-dir data/FOODIE_footprints \
-        --out-dir comvar_footprint_overlap_snpRes
+        --out-dir results/comvar_footprint_overlap_snpRes
 
 Requirements:
     - bedtools (must be on PATH)
@@ -100,7 +100,7 @@ Examples:
       --snp-dir data/GWFM_erythroids/snpRes_hg38 \\
       --snp-suffix .snpRes \\
       --footprint-dir data/FOODIE_footprints \\
-      --out-dir comvar_footprint_overlap_snpRes
+      --out-dir results/comvar_footprint_overlap_snpRes
         """,
     )
     parser.add_argument(
@@ -115,8 +115,8 @@ Examples:
     )
     parser.add_argument(
         "--out-dir",
-        default="./comvar_footprint_overlap",
-        help="Output directory for common variant overlap results (default: ./comvar_footprint_overlap).",
+        default="./results/comvar_footprint_overlap",
+        help="Output directory for common variant overlap results (default: ./results/comvar_footprint_overlap).",
     )
     parser.add_argument(
         "--pip-threshold",
