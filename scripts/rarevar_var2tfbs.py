@@ -1,37 +1,34 @@
 #!/usr/bin/env python
 """
-VAR2TFBS Step 2: Predict common variant effects on TF binding sites.
+Rare variant VAR2TFBS: Identify driver rare variants from burden test
+leave-one-out analysis and predict their effects on TF binding sites.
 
-Trait-agnostic: takes the merged BED file from Step 1 (containing all unique
-common variants overlapping FOODIE footprints across traits) and predicts
-variant effects on TF binding using FIMO motif scanning against JASPAR PWMs.
-
-For each variant, extracts ref/alt sequences from the reference genome
-(footprint ± ext_bp) and classifies TF binding changes as Create, Disrupt,
-Increase, Decrease, or Unchange.
-
-Input:
-    - Merged BED from Step 1: GWFM_variants_in_{cell}.merged.hg38.bed
-      (columns: Chromosome, Start, End, SNP, footprint_region)
-    - Allele source: per-trait overlap CSV directory or single CSV with SNP, A1, A2
+Pipeline:
+1. Load burden test results per trait and find significant footprints (p < 5e-8)
+2. For each significant footprint, use leave-one-out (LOO) results to find the
+   driver variant — the variant whose removal causes the largest increase in
+   burden test p-value (i.e., highest LOO p-value)
+3. Filter out footprints where no variant has MAC > min_carrier threshold
+4. Run FIMO motif scanning on driver variants to predict TF binding effects
 
 Usage:
-    python scripts/comvar_var2tfbs.py \
-        --input-bed comvar_footprint_overlap_credible/GWFM_variants_in_K562.merged.hg38.bed \
-        --allele-src comvar_footprint_overlap_credible/K562.merged.hg38 \
+    python scripts/rarevar_var2tfbs.py \
+        --burden-dir data/burdentest_erythroids \
+        --loo-file data/leaveoneout_results/K562.leave_one_out.all_traits.20251120.csv \
         --ref-genome data/reference/hg38.fa \
         --jaspar-meme data/JASPAR_MEME/JASPAR2024_CORE_vertebrates_non-redundant_pfms_meme.txt \
-        --out-dir comvar_var2tfbs_results
+        --out-dir rarevar_var2tfbs_results
 """
 
 import argparse
+import glob
 import os
 
 import numpy as np
 import pandas as pd
 import pyfaidx
 from kipoiseq import Interval
-from memelite import fimo
+from memelite import fimo as run_fimo_engine
 from memelite.io import read_meme
 from tqdm import tqdm
 
@@ -62,7 +59,7 @@ def print_success(text):
 
 
 # ---------------------------------------------------------------------------
-# Reference genome helper
+# Reference genome helper (shared with comvar_var2tfbs.py)
 # ---------------------------------------------------------------------------
 
 class FastaStringExtractor:
@@ -93,7 +90,138 @@ class FastaStringExtractor:
 
 
 # ---------------------------------------------------------------------------
-# Sequence extraction
+# Driver variant identification
+# ---------------------------------------------------------------------------
+
+def load_significant_footprints(burden_dir, sig_threshold=None):
+    """Load burden test results and return significant footprints per trait.
+
+    If sig_threshold is None, uses Bonferroni correction: 0.05 / N_footprints.
+    """
+    burden_files = sorted(glob.glob(os.path.join(burden_dir, "*.xlsx")))
+    if not burden_files:
+        raise FileNotFoundError(f"No .xlsx files found in {burden_dir}")
+
+    # Determine threshold from first file if not specified
+    first_df = pd.read_excel(burden_files[0])
+    n_footprints = len(first_df)
+    if sig_threshold is None:
+        sig_threshold = 0.05 / n_footprints
+    print_info(f"{n_footprints:,} footprints tested, significance threshold: p < {sig_threshold:.2e}")
+
+    sig_records = []
+    for f in burden_files:
+        # Trait name: e.g. HC.K562_FOODIE_fps_rare_var_result.2025-05-29.xlsx -> HC
+        trait = os.path.basename(f).split(".")[0]
+        df = pd.read_excel(f)
+        sig = df[df["p_regenie"] < sig_threshold]
+        for _, row in sig.iterrows():
+            sig_records.append({
+                "trait": trait,
+                "footprint": row["ID"],
+                "burden_p": row["p_regenie"],
+                "MAC": row["MAC"],
+            })
+
+    sig_df = pd.DataFrame(sig_records)
+    print_info(f"{len(sig_df)} significant trait-footprint pairs across {sig_df['trait'].nunique()} traits")
+    print_success(f"{sig_df['footprint'].nunique()} unique footprints")
+    return sig_df
+
+
+def find_driver_variants(sig_df, loo_df, min_carrier=30):
+    """For each significant footprint × trait, find the driver variant from LOO.
+
+    The driver is the variant whose removal causes the largest increase in
+    burden test p-value (highest LOO p-value → most signal loss when removed).
+
+    Filters:
+    - Remove footprints where no variant has MAC > min_carrier
+    - Keep only the driver variant per footprint (deduplicated across traits)
+    """
+    drivers = []
+    removed_no_carrier = 0
+
+    for _, sig_row in sig_df.iterrows():
+        trait = sig_row["trait"]
+        footprint = sig_row["footprint"]
+
+        loo = loo_df[(loo_df["trait"] == trait) & (loo_df["foodie"] == footprint)]
+        if loo.empty:
+            continue
+
+        # Filter: at least one variant with MAC > min_carrier
+        if not (loo["MAC_rare"] > min_carrier).any():
+            removed_no_carrier += 1
+            continue
+
+        # Driver = variant whose removal causes highest LOO p-value
+        driver_idx = loo["p_regenie"].idxmax()
+        driver = loo.loc[driver_idx]
+
+        drivers.append({
+            "trait": trait,
+            "footprint": footprint,
+            "burden_p": sig_row["burden_p"],
+            "driver_variant": driver["ID_rare"],
+            "driver_loo_p": driver["p_regenie"],
+            "driver_MAC": driver["MAC_rare"],
+            "driver_ALLELE0": driver["ALLELE0_rare"],
+            "driver_ALLELE1": driver["ALLELE1_rare"],
+        })
+
+    if removed_no_carrier > 0:
+        print_info(f"Removed {removed_no_carrier} footprint-trait pairs (no variant with MAC > {min_carrier})")
+
+    driver_df = pd.DataFrame(drivers)
+    print_info(f"{len(driver_df)} trait-footprint pairs with driver variants")
+    print_success(f"{driver_df['driver_variant'].nunique()} unique driver variants across {driver_df['footprint'].nunique()} footprints")
+    return driver_df
+
+
+def prepare_driver_bed(driver_df):
+    """Create a BED-like DataFrame for driver variants (deduplicated).
+
+    Parses DRAGEN variant IDs (1-based) into 0-based BED coordinates.
+    Returns DataFrame with columns: Chromosome, Start, End, SNP, footprint_region, A1, A2
+    """
+    records = []
+    seen = set()
+    for _, row in driver_df.iterrows():
+        variant_id = row["driver_variant"]
+        footprint = row["footprint"]
+        key = (variant_id, footprint)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        # Parse DRAGEN ID: DRAGEN:chr16:88810611:G:A
+        parts = variant_id.split(":")
+        chrom = parts[1]
+        pos_1based = int(parts[2])
+        ref_allele = parts[3]
+        alt_allele = parts[4]
+
+        # Convert to 0-based BED coordinates
+        pos_0based = pos_1based - 1
+
+        records.append({
+            "Chromosome": chrom,
+            "Start": pos_0based,
+            "End": pos_0based + len(ref_allele),
+            "SNP": variant_id,
+            "footprint_region": footprint,
+            "A1": alt_allele,   # A1 = alt allele (REGENIE convention)
+            "A2": ref_allele,   # A2 = ref allele
+        })
+
+    bed_df = pd.DataFrame(records)
+    print_success(f"{len(bed_df)} unique variant-footprint pairs for FIMO analysis")
+    return bed_df
+
+
+# ---------------------------------------------------------------------------
+# Sequence extraction (adapted from comvar_var2tfbs.py)
 # ---------------------------------------------------------------------------
 
 def parse_footprint_region(region_str):
@@ -103,37 +231,8 @@ def parse_footprint_region(region_str):
     return chrom, int(start), int(end)
 
 
-def load_allele_info(allele_src):
-    """Load A1/A2 alleles from a CSV file or directory of CSVs.
-
-    If allele_src is a directory, reads all CSVs and merges to get the
-    union of SNP allele info (needed when no single trait covers all variants).
-    """
-    import glob as _glob
-
-    if os.path.isdir(allele_src):
-        csv_files = sorted(_glob.glob(os.path.join(allele_src, "*.csv")))
-        dfs = []
-        for f in csv_files:
-            dfs.append(pd.read_csv(f, usecols=["SNP", "A1", "A2"]))
-        df = pd.concat(dfs, ignore_index=True)
-    else:
-        df = pd.read_csv(allele_src, usecols=["SNP", "A1", "A2"])
-    df = df.drop_duplicates(subset="SNP", keep="first")
-    return df.set_index("SNP")[["A1", "A2"]].to_dict("index")
-
-
-def load_merged_bed(bed_path):
-    """Load merged BED file into a DataFrame."""
-    df = pd.read_csv(
-        bed_path, sep="\t", header=None,
-        names=["Chromosome", "Start", "End", "SNP", "footprint_region"],
-    )
-    return df
-
-
 def extract_sequences(df, seq_extractor, ext_bp):
-    """Add Ref_seq and Alt_seq columns to the variant DataFrame.
+    """Extract ref/alt sequences for each variant.
 
     For each variant, the extracted window is footprint ± ext_bp.
     Determines which of A1/A2 is the reference allele by checking against
@@ -141,9 +240,10 @@ def extract_sequences(df, seq_extractor, ext_bp):
     """
     ref_seqs, alt_seqs, seq_names = [], [], []
     n_a1_ref, n_a2_ref, n_mismatch = 0, 0, 0
+
     for _, row in tqdm(df.iterrows(), total=len(df), desc="Extracting sequences", ncols=60):
         fp_chrom, fp_start, fp_end = parse_footprint_region(row["footprint_region"])
-        var_pos = int(row["Start"])  # 0-based variant position (hg38)
+        var_pos = int(row["Start"])  # 0-based variant position
 
         # Check which allele matches the reference genome
         a1, a2 = row["A1"], row["A2"]
@@ -157,7 +257,6 @@ def extract_sequences(df, seq_extractor, ext_bp):
             ref_var, alt_var = a1, a2
             n_a1_ref += 1
         else:
-            # Check if A1 matches (for indels, compare with A1 length)
             ref_base_a1 = seq_extractor.extract(
                 Interval(row["Chromosome"], var_pos, var_pos + len(a1))
             )
@@ -165,7 +264,6 @@ def extract_sequences(df, seq_extractor, ext_bp):
                 ref_var, alt_var = a1, a2
                 n_a1_ref += 1
             else:
-                # Default to A2=ref if neither matches exactly
                 ref_var, alt_var = a2, a1
                 n_mismatch += 1
 
@@ -185,7 +283,7 @@ def extract_sequences(df, seq_extractor, ext_bp):
             + ref_seq[var_pos_in_window + len(ref_var) :]
         )
 
-        # Sequence name: rsID|chrom:pos(0-based):ref:alt|footprint_region
+        # Sequence name: variantID|chrom:pos(0-based):ref:alt|footprint_region
         seq_name = (
             f"{row['SNP']}|{row['Chromosome']}:{var_pos}:{ref_var}:{alt_var}"
             f"|{row['footprint_region']}"
@@ -215,7 +313,7 @@ def write_fasta(df, out_path, allele="ref"):
 
 
 # ---------------------------------------------------------------------------
-# FIMO motif scanning
+# FIMO motif scanning (shared with comvar_var2tfbs.py)
 # ---------------------------------------------------------------------------
 
 def run_fimo(motifs, fasta_path, ext_bp, threshold=0.0001):
@@ -223,13 +321,12 @@ def run_fimo(motifs, fasta_path, ext_bp, threshold=0.0001):
 
     Returns a DataFrame of hits where the variant falls within the motif.
     """
-    hits = fimo(motifs, fasta_path, threshold=threshold)
+    hits = run_fimo_engine(motifs, fasta_path, threshold=threshold)
     dfs = [h for h in hits if not h.empty]
     if not dfs:
         return pd.DataFrame()
 
     df = pd.concat(dfs, ignore_index=True)
-    # motif_name format from memelite: "MA0001.1 ARNT"
     df["motif_id"] = df["motif_name"].str.split(" ").str[0] + df["strand"]
     df["motif_name"] = df["motif_name"].str.split(" ").str[1] + df["strand"]
     df["motif_info"] = (
@@ -239,7 +336,7 @@ def run_fimo(motifs, fasta_path, ext_bp, threshold=0.0001):
     )
     df["var-motif"] = df["sequence_name"] + "-" + df["motif_info"]
 
-    # Parse sequence_name: rsID|chrom:pos:ref:alt|footprint_region
+    # Parse sequence_name: variantID|chrom:pos:ref:alt|footprint_region
     df["rsID"] = df["sequence_name"].str.split("|").str[0]
     df["var_locus"] = df["sequence_name"].str.split("|").str[1]
     df["foodie_id"] = df["sequence_name"].str.split("|").str[2]
@@ -264,19 +361,16 @@ def run_fimo(motifs, fasta_path, ext_bp, threshold=0.0001):
 
 
 def classify_tf_changes(ref_alt_df):
-    """Classify TF binding changes based on ref/alt FIMO p-values.
-
-    Categories: Create, Disrupt, Increase, Decrease, Unchange, NoTFBS.
-    """
+    """Classify TF binding changes based on ref/alt FIMO p-values."""
     ref_p = ref_alt_df["p-value_ref"].fillna(1)
     alt_p = ref_alt_df["p-value_alt"].fillna(1)
 
     conditions = [
-        (ref_p != 1) & (alt_p != 1) & (ref_p > alt_p),   # Increase
-        (ref_p != 1) & (alt_p != 1) & (ref_p < alt_p),   # Decrease
-        (ref_p != 1) & (alt_p != 1) & (ref_p == alt_p),  # Unchange
-        (ref_p == 1) & (alt_p != 1),                       # Create
-        (ref_p != 1) & (alt_p == 1),                       # Disrupt
+        (ref_p != 1) & (alt_p != 1) & (ref_p > alt_p),
+        (ref_p != 1) & (alt_p != 1) & (ref_p < alt_p),
+        (ref_p != 1) & (alt_p != 1) & (ref_p == alt_p),
+        (ref_p == 1) & (alt_p != 1),
+        (ref_p != 1) & (alt_p == 1),
     ]
     choices = ["Increase", "Decrease", "Unchange", "Create", "Disrupt"]
     ref_alt_df["TF_change"] = np.select(conditions, choices, default="NoTFBS")
@@ -284,17 +378,11 @@ def classify_tf_changes(ref_alt_df):
 
 
 def deduplicate_tf_hits(ref_alt_df):
-    """Corrected TFBS: keep only the best p-value per TF per variant.
-
-    For each rsID, takes ref and alt hits separately, keeps only the best
-    (lowest) p-value per TF, then re-merges on TF with outer join and
-    re-classifies TF binding changes.
-    """
+    """Keep only the best p-value per TF per variant."""
     results = []
     for rsid, var_tfbs in ref_alt_df.groupby("rsID"):
         foodie_id = var_tfbs["foodie_id"].iloc[0]
 
-        # Ref: keep best p-value per TF
         ref_cols = ["TF", "motif_name_ref", "motif_id_ref", "p-value_ref", "start_ref", "end_ref"]
         var_ref = var_tfbs[ref_cols].dropna(subset=["p-value_ref"])
         if not var_ref.empty:
@@ -304,7 +392,6 @@ def deduplicate_tf_hits(ref_alt_df):
                 .reset_index(drop=True)
             )
 
-        # Alt: keep best p-value per TF
         alt_cols = ["TF", "motif_name_alt", "motif_id_alt", "p-value_alt", "start_alt", "end_alt"]
         var_alt = var_tfbs[alt_cols].dropna(subset=["p-value_alt"])
         if not var_alt.empty:
@@ -314,7 +401,6 @@ def deduplicate_tf_hits(ref_alt_df):
                 .reset_index(drop=True)
             )
 
-        # Re-merge on TF
         if var_ref.empty and var_alt.empty:
             continue
         elif var_ref.empty:
@@ -366,8 +452,6 @@ def var2tfbs(motifs, ref_fasta, alt_fasta, ext_bp, fimo_threshold=0.0001):
     ref_alt["sequence_name"] = ref_alt["sequence_name_ref"].fillna(
         ref_alt["sequence_name_alt"]
     )
-
-    # Parse variant/footprint info from sequence_name
     ref_alt["rsID"] = ref_alt["sequence_name"].str.split("|").str[0]
     ref_alt["variant_id"] = ref_alt["sequence_name"].str.split("|").str[1]
     ref_alt["foodie_id"] = ref_alt["sequence_name"].str.split("|").str[2]
@@ -380,7 +464,6 @@ def var2tfbs(motifs, ref_fasta, alt_fasta, ext_bp, fimo_threshold=0.0001):
 
     ref_alt = classify_tf_changes(ref_alt)
 
-    # Corrected TFBS: deduplicate to keep best p-value per TF per variant
     print("Deduplicating: keeping best p-value per TF per variant ...")
     ref_alt_corrected = deduplicate_tf_hits(ref_alt)
 
@@ -393,26 +476,26 @@ def var2tfbs(motifs, ref_fasta, alt_fasta, ext_bp, fimo_threshold=0.0001):
 
 def parse_args():
     p = argparse.ArgumentParser(
-        description="VAR2TFBS Step 2: predict common variant effects on TF binding (trait-agnostic)"
+        description="Rare variant VAR2TFBS: identify driver variants and predict TF binding effects"
     )
     p.add_argument(
-        "--input-bed", required=True,
-        help="Merged BED file from Step 1 "
-             "(e.g. comvar_footprint_overlap_credible/GWFM_variants_in_K562.merged.hg38.bed)",
+        "--burden-dir", required=True,
+        help="Directory of burden test result Excel files (one per trait)",
     )
     p.add_argument(
-        "--allele-src", required=True,
-        help="Directory of per-trait overlap CSVs or single CSV with SNP, A1, A2 columns "
-             "(e.g. comvar_footprint_overlap_credible/K562.merged.hg38)",
+        "--loo-file", required=True,
+        help="Leave-one-out results CSV (all traits combined)",
     )
     p.add_argument("--ref-genome", required=True, help="Path to hg38.fa reference genome")
     p.add_argument("--jaspar-meme", required=True, help="Path to JASPAR MEME motif file")
     p.add_argument(
-        "--out-dir", default="./comvar_var2tfbs_results",
-        help="Output directory (default: ./comvar_var2tfbs_results)",
+        "--out-dir", default="./rarevar_var2tfbs_results",
+        help="Output directory (default: ./rarevar_var2tfbs_results)",
     )
     p.add_argument("--ext-bp", type=int, default=30, help="Sequence extension in bp (default: 30)")
     p.add_argument("--fimo-threshold", type=float, default=0.0001, help="FIMO p-value threshold (default: 0.0001)")
+    p.add_argument("--sig-threshold", type=float, default=None, help="Burden test significance threshold (default: Bonferroni 0.05/N_footprints)")
+    p.add_argument("--min-carrier", type=int, default=30, help="Minimum MAC for at least one variant in footprint (default: 30)")
     return p.parse_args()
 
 
@@ -422,68 +505,67 @@ def main():
     fasta_dir = os.path.join(args.out_dir, "fasta")
     os.makedirs(fasta_dir, exist_ok=True)
 
-    # Derive cell name from BED filename (e.g. GWFM_variants_in_K562.merged.hg38.bed -> K562)
-    bed_basename = os.path.basename(args.input_bed)
-    cell = bed_basename.replace("GWFM_variants_in_", "").split(".")[0]
+    total_steps = 4
 
-    total_steps = 3
-
-    print_header("Common Variant VAR2TFBS Analysis")
-    print_info(f"Cell:            {cell}")
-    print_info(f"Input BED:       {args.input_bed}")
-    print_info(f"Allele source:   {args.allele_src}")
+    print_header("Rare Variant VAR2TFBS Analysis")
+    print_info(f"Burden test dir: {args.burden_dir}")
+    print_info(f"LOO file:        {args.loo_file}")
     print_info(f"Reference genome: {args.ref_genome}")
     print_info(f"JASPAR motifs:   {args.jaspar_meme}")
+    print_info(f"Significance:    p < {args.sig_threshold}")
+    print_info(f"Min carrier:     MAC > {args.min_carrier}")
     print_info(f"Seq extension:   {args.ext_bp} bp")
     print_info(f"FIMO threshold:  {args.fimo_threshold}")
 
-    # Step 1: Load variants and allele info
-    print_step(1, total_steps, "Loading variants and allele info")
-    df = load_merged_bed(args.input_bed)
-    print_info(f"{len(df):,} variants from merged BED")
+    # Step 1: Load significant footprints from burden tests
+    print_step(1, total_steps, "Loading significant footprints from burden tests")
+    sig_df = load_significant_footprints(args.burden_dir, args.sig_threshold)
 
-    allele_dict = load_allele_info(args.allele_src)
-    df["A1"] = df["SNP"].map(lambda x: allele_dict.get(x, {}).get("A1", ""))
-    df["A2"] = df["SNP"].map(lambda x: allele_dict.get(x, {}).get("A2", ""))
-    n_missing = (df["A1"] == "").sum()
-    if n_missing > 0:
-        print_info(f"WARNING: {n_missing:,} variants missing allele info, skipping")
-        df = df[df["A1"] != ""].reset_index(drop=True)
-    print_success(f"{len(df):,} variants with allele info")
+    # Step 2: Identify driver variants from LOO analysis
+    print_step(2, total_steps, "Identifying driver variants from leave-one-out analysis")
+    loo_df = pd.read_csv(args.loo_file)
+    print_info(f"LOO file: {len(loo_df):,} rows, {loo_df['trait'].nunique()} traits")
+    driver_df = find_driver_variants(sig_df, loo_df, min_carrier=args.min_carrier)
 
-    # Step 2: Extract ref/alt sequences
-    print_step(2, total_steps, "Extracting ref/alt sequences")
+    driver_out = os.path.join(args.out_dir, "driver_variants_summary.csv")
+    driver_df.to_csv(driver_out, index=False)
+    print_success(f"Saved driver summary: {driver_out}")
+
+    # Step 3: Extract ref/alt sequences
+    print_step(3, total_steps, "Extracting ref/alt sequences")
+    bed_df = prepare_driver_bed(driver_df)
+
     print_info("Loading reference genome ...")
     seq_extractor = FastaStringExtractor(args.ref_genome)
     print_info("Loading JASPAR motifs ...")
     motifs = read_meme(args.jaspar_meme)
 
-    df = extract_sequences(df, seq_extractor, args.ext_bp)
-    df = df.drop_duplicates(subset=["seq_name"]).reset_index(drop=True)
+    bed_df = extract_sequences(bed_df, seq_extractor, args.ext_bp)
+    bed_df = bed_df.drop_duplicates(subset=["seq_name"]).reset_index(drop=True)
     seq_extractor.close()
 
-    ref_fasta = os.path.join(fasta_dir, f"{cell}_ref_seqExt{args.ext_bp}bp.fa")
-    alt_fasta = os.path.join(fasta_dir, f"{cell}_alt_seqExt{args.ext_bp}bp.fa")
-    write_fasta(df, ref_fasta, allele="ref")
-    write_fasta(df, alt_fasta, allele="alt")
+    ref_fasta = os.path.join(fasta_dir, "K562_rarevar_ref_seqExt{ext}bp.fa".format(ext=args.ext_bp))
+    alt_fasta = os.path.join(fasta_dir, "K562_rarevar_alt_seqExt{ext}bp.fa".format(ext=args.ext_bp))
+    write_fasta(bed_df, ref_fasta, allele="ref")
+    write_fasta(bed_df, alt_fasta, allele="alt")
     print_success(f"Wrote {ref_fasta}")
     print_success(f"Wrote {alt_fasta}")
 
-    # Step 3: FIMO motif scanning + TF change classification
-    print_step(3, total_steps, "FIMO motif scanning + TF change classification")
+    # Step 4: FIMO motif scanning + TF change classification
+    print_step(4, total_steps, "FIMO motif scanning + TF change classification")
     result = var2tfbs(motifs, ref_fasta, alt_fasta, args.ext_bp, args.fimo_threshold)
 
     if result.empty:
         print_info("No motif hits found.")
         return
 
-    result["cell"] = cell
-    out_path = os.path.join(args.out_dir, f"{cell}_var2tfbs.csv")
+    result["cell"] = "K562"
+    out_path = os.path.join(args.out_dir, "K562_rarevar_var2tfbs.csv")
     result.to_csv(out_path, index=False)
 
     print()
     print("=" * 62)
-    print(f"  Results: {len(result):,} variant-TF pairs across {result['rsID'].nunique()} variants")
+    print(f"  Results: {len(result):,} variant-TF pairs across {result['rsID'].nunique()} driver variants")
     print(f"    Create:    {(result['TF_change'] == 'Create').sum():,}")
     print(f"    Disrupt:   {(result['TF_change'] == 'Disrupt').sum():,}")
     print(f"    Increase:  {(result['TF_change'] == 'Increase').sum():,}")

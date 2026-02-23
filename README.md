@@ -1,10 +1,8 @@
-# varTFBridge
+# Genome-wide maps of transcription factor footprints identify noncoding variants rewiring gene regulatory networks with varTFBridge
 
 <p align="center">
   <img src="workflow.png" alt="Workflow" width="800">
 </p>
-
-## Genome-wide maps of transcription factor footprints identify noncoding variants rewiring gene regulatory networks
 
 **varTFBridge** is an integrative framework that combines transcription factor (TF) footprinting data with genome-wide association analyses to identify causal noncoding variants and elucidate their regulatory mechanisms in TF-mediated gene regulation.
 
@@ -48,8 +46,11 @@ cd varTFBridge
 
 ## Dependencies
 
-- Python 3.8+
+**Python packages** (install via `pip install -r requirements.txt`):
 - pandas, numpy, pyfaidx, kipoiseq, memelite, tqdm
+
+**External tools**:
+- Python 3.8+
 - bedtools (must be on PATH)
 - FIMO (from MEME Suite)
 - AlphaGenome (v0.5.1)
@@ -66,6 +67,7 @@ cd varTFBridge
 | `scripts/filter_credible_set.py` | Filter variants by PIP threshold and annotate with LCS credible set info |
 | `scripts/overlap_foodie_footprints.py` | VAR2TFBS Step 1: Overlap GWFM variants with FOODIE footprint BED files |
 | `scripts/comvar_var2tfbs.py` | VAR2TFBS Step 2: Predict variant effects on TF binding via FIMO motif scanning |
+| `scripts/rarevar_var2tfbs.py` | Rare variant VAR2TFBS: identify driver variants from burden test LOO and predict TF binding effects |
 
 ## Data
 
@@ -178,8 +180,8 @@ Trait-agnostic: takes the merged BED from Step 1 (all unique variants across tra
 
 ```bash
 python scripts/comvar_var2tfbs.py \
-    --input-bed comvar_credible_footprint_overlap/GWFM_variants_in_K562.merged.hg38.bed \
-    --allele-src comvar_credible_footprint_overlap/K562.merged.hg38 \
+    --input-bed comvar_footprint_overlap_credible/GWFM_variants_in_K562.merged.hg38.bed \
+    --allele-src comvar_footprint_overlap_credible/K562.merged.hg38 \
     --ref-genome data/reference/hg38.fa \
     --jaspar-meme data/JASPAR_MEME/JASPAR2024_CORE_vertebrates_non-redundant_pfms_meme.txt \
     --out-dir comvar_var2tfbs_results
@@ -196,6 +198,33 @@ python scripts/comvar_var2tfbs.py \
 | `--fimo-threshold` | `0.0001` | FIMO p-value threshold |
 
 Output: `{out_dir}/{cell}_var2tfbs.csv` with ref/alt FIMO hits, TF change classification (Create/Disrupt/Increase/Decrease/Unchange), and FASTA files in `{out_dir}/fasta/`.
+
+### Rare Variant VAR2TFBS Analysis
+
+Identifies driver rare variants from footprint-based burden test leave-one-out (LOO) analysis and predicts their effects on TF binding. For each significant footprint (Bonferroni-corrected p < 0.05/N_footprints), the driver variant is the one whose removal causes the largest increase in burden test p-value. Footprints where no variant has more than 30 carriers (MAC > 30) are excluded.
+
+```bash
+python scripts/rarevar_var2tfbs.py \
+    --burden-dir data/burdentest_erythroids \
+    --loo-file data/leaveoneout_results/K562.leave_one_out.all_traits.20251120.csv \
+    --ref-genome data/reference/hg38.fa \
+    --jaspar-meme data/JASPAR_MEME/JASPAR2024_CORE_vertebrates_non-redundant_pfms_meme.txt \
+    --out-dir rarevar_var2tfbs_results
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--burden-dir` | (required) | Directory of burden test result Excel files (one per trait) |
+| `--loo-file` | (required) | Leave-one-out results CSV (all traits combined) |
+| `--ref-genome` | (required) | Path to hg38.fa reference genome |
+| `--jaspar-meme` | (required) | Path to JASPAR MEME motif file |
+| `--out-dir` | `./rarevar_var2tfbs_results` | Output directory |
+| `--sig-threshold` | Bonferroni (0.05/N) | Burden test significance threshold |
+| `--min-carrier` | `30` | Minimum MAC for at least one variant in footprint |
+| `--ext-bp` | `30` | Sequence extension in bp around footprint |
+| `--fimo-threshold` | `0.0001` | FIMO p-value threshold |
+
+Output: `driver_variants_summary.csv` (driver variants per trait-footprint) and `K562_rarevar_var2tfbs.csv` (TF binding effect predictions).
 
 ### ABC-FP-Max Predictions
 Adapted from the [ABC model](https://github.com/broadinstitute/ABC-Enhancer-Gene-Prediction) to link TF footprints to target genes using:

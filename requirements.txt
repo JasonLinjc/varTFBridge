@@ -1,0 +1,6 @@
+pandas>=2.0
+numpy>=1.24
+pyfaidx>=0.7
+kipoiseq>=0.7
+memelite>=0.2
+tqdm>=4.60
