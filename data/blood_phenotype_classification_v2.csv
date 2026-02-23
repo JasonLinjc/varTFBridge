@@ -1,0 +1,55 @@
+Phenotype,Long Name,Type,Name2
+baso,Basophil count,Myeloid,Basophill
+baso_p,Basophil percentage of white cells,Myeloid,BP
+eo,Eosinophil count,Myeloid,Eosinophill
+eo_p,Eosinophil percentage of white cells,Myeloid,EP
+hct,Hematocrit,Erythroid,HP
+hgb,Hemoglobin concentration,Erythroid,HC
+hlr,High light scatter reticulocyte count,Erythroid,HLDRC
+hlr_p,High light scatter reticulocyte percentage,Erythroid,HLSRP
+irf,Immature fraction of reticulocytes,Erythroid,IRF
+lymph,Lymphocyte count,Lymphoid,Lymphocyte
+lymph_p,Lymphocyte percentage of white cells,Lymphoid,LP
+mch,Mean corpuscular hemoglobin,Erythroid,MCH
+mchc,Mean corpuscular hemoglobin concentration,Erythroid,MCHC
+mcv,Mean corpuscular volume,Erythroid,MCV
+mono,Monocyte count,Myeloid,Monocyte
+mono_p,Monocyte percentage of white cells,Myeloid,MP
+mpv,Mean platelet volume,Platelets,MPV
+mrv,Mean reticulocyte volume,Erythroid,MRV
+mscv,Mean sphered corpuscular volume,Erythroid,MSCV
+neut,Neutrophil count,Myeloid,Neutrophill
+neut_p,Neutrophil percentage of white cells,Myeloid,NP
+pct,Plateletcrit,Platelets,Platelet_crit
+pdw,Platelet distribution width,Platelets,PDW
+plt,Platelet count,Platelets,Platelet_count
+rbc,Red blood cell count,Erythroid,RBC
+rdw_cv,Red cell distribution width,Erythroid,RBCDW
+ret,Reticulocyte count,Erythroid,RC
+ret_p,Reticulocyte fraction of red cells,Erythroid,RP
+wbc,White blood cell count,Myeloid,WBC
+TS,Telomere length,Telomere,TS
+blood_cancer,Blood cancer,blood_cancer,blood_cancer
+CLL,Chronic lymphocytic leukemia,Leukemia,UKB_CLL_ALL
+C90,Multiple myeloma and malignant plasma cell neoplasms,Myeloma,C90
+C91,Lymphoid leukaemia,Leukemia,C91
+C92,Myeloid leukaemia,Leukemia,C92
+C81,Hodgkin's disease,Lymphoma,C81
+C82,Follicular non-Hodgkin's lymphoma,Lymphoma,C82
+C83,Diffuse non-Hodgkin's lymphoma,Lymphoma,C83
+C84,Peripheral and cutaneous T-cell lymphomas,Lymphoma,C84
+C85,Other and unspecified types of non-Hodgkin's lymphoma,Lymphoma,C85
+D50,D50 Iron deficiency anaemia,Other_blood_disease,D50
+D51,D51 Vitamin B12 deficiency anaemia,Other_blood_disease,D51
+D52,D52 Folate deficiency anaemia,Other_blood_disease,D52
+D61,D61 Other aplastic anaemias,Other_blood_disease,D61
+D63,D63 Anaemia in chronic diseases classified elsewhere,Other_blood_disease,D63
+D64,D64 Other anaemias,Other_blood_disease,D64
+D68,D68 Other coagulation defects,Other_blood_disease,D68
+D69,D69 Purpura and other haemorrhagic conditions,Other_blood_disease,D69
+D70,D70 Agranulocytosis,Other_blood_disease,D70
+D72,D72 Other disorders of white blood cells,Other_blood_disease,D72
+D73,D73 Diseases of spleen,Other_blood_disease,D73
+D75,D75 Other diseases of blood and blood-forming organs,Other_blood_disease,D75
+D86,D86 Sarcoidosis,Other_blood_disease,D86
+D57,D57 Sickle cell disorders,Sickle_cell,D57
