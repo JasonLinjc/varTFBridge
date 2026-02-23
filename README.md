@@ -96,7 +96,6 @@ Genome-wide fine-mapping (GWFM) uses [GCTB 2.5.4](https://gctbhub.cloud.edu.au/s
 | **`.snpRes`** | Genome-wide SNP results (hg19) | Index, Name, Chrom, Position, A1, A2, A1Frq, A1Effect, SE, VarExplained, PEP, Pi1–Pi5, PIP   |
 | **`.lcs`**    | Local credible sets            | CS, Size, PIP, PGV, PGVenrich, PEP, SNP (comma-separated), ENSGID_hg19, GeneName_hg19        |
 | **`.lcsRes`** | Credible set summary           | PIP/PEP thresholds, # sets, avg size, estimated causal variants, variance explained            |
-| **`.gcs`**    | Global credible sets (hg38)    | Chromosome, Start, End, SNP, A1, A2, freq, b, se, p, N, PIP                                   |
 
 **Blood cell traits analysed** (13 erythroid + 2 others):
 
@@ -229,11 +228,29 @@ Output: `driver_variants_summary.csv` (driver variants per trait-footprint) and 
 
 ### ABC-FP-Max Predictions
 
-Adapted from the [ABC model](https://github.com/broadinstitute/ABC-Enhancer-Gene-Prediction) to link TF footprints to target genes using:
+Adapted from the [ABC model](https://github.com/broadinstitute/ABC-Enhancer-Gene-Prediction) to link TF footprints to target genes using chromatin accessibility (ATAC-seq), Hi-C contact frequency, and footprint activity scores. See [ABC-FP/README.md](ABC-FP/README.md) for license details.
 
-- Chromatin accessibility (ATAC-seq)
-- Hi-C contact frequency
-- Footprint activity scores
+**1. Configure biosamples** — edit `ABC-FP/config/config_FOODIE_ATAC.tsv` with paths to your input files:
+
+| Column           | Description                                      |
+|------------------|--------------------------------------------------|
+| `biosample`      | Sample name (e.g. `K562_FOODIE_ATAC`)            |
+| `narrowPeaks`    | FOODIE footprint BED file                        |
+| `ATAC`           | ATAC-seq BAM file                                |
+| `HiC_file`       | Hi-C contact matrix (`.hic` format)              |
+| `HiC_type`       | Hi-C file type (`hic`)                           |
+| `HiC_resolution` | Hi-C resolution in bp (e.g. `5000`)              |
+
+**2. Configure parameters** — edit `ABC-FP/config/config.yaml` to set `results_dir` and reference file paths.
+
+**3. Run the pipeline**:
+
+```bash
+cd ABC-FP
+snakemake -j <cores> --use-conda
+```
+
+Output: `{results_dir}/{biosample}/Predictions/EnhancerPredictionsAllPutative.tsv.gz` containing ABC scores for all putative enhancer-gene links.
 
 ## Methods
 
