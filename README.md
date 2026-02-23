@@ -68,6 +68,7 @@ cd varTFBridge
 | Common variant VAR2TFBS | `scripts/comvar_overlap_foodie_footprints.py` | Step 1 — Overlap GWFM common variants with FOODIE footprint BED files               |
 | Common variant VAR2TFBS | `scripts/comvar_var2tfbs.py`                  | Step 2 — Predict variant effects on TF binding via FIMO motif scanning              |
 | Rare variant VAR2TFBS  | `scripts/rarevar_var2tfbs.py`                | Identify driver rare variants from burden-test LOO and predict TF binding effects   |
+| Variant-to-gene        | `scripts/link_var2gene.py`                   | Link variants to target genes via ABC-FP-Max footprint-gene scores                  |
 
 ## Data
 
@@ -251,6 +252,35 @@ snakemake -j <cores> --use-conda
 ```
 
 Output: `{results_dir}/{biosample}/Predictions/EnhancerPredictionsAllPutative.tsv.gz` containing ABC scores for all putative enhancer-gene links.
+
+### Variant-to-Gene Linking
+
+Links variants to target genes by bridging: **variant → footprint → enhancer → gene** using ABC-FP-Max scores. For each variant, the target gene is the one with the highest ABC-FP score. Also annotates with TF binding changes and cell-type-specific TF RNA expression.
+
+```bash
+python scripts/link_var2gene.py \
+    --var2tfbs results/comvar_var2tfbs_results/K562_var2tfbs.csv \
+    --footprint-bed data/FOODIE_footprints/K562.merged.hg38.bed \
+    --enhancer-bed ABC_FP_results/K562_FOODIE_ATAC/Neighborhoods/EnhancerList.bed \
+    --abc-predictions ABC_FP_results/K562_FOODIE_ATAC/Predictions/EnhancerPredictionsAllPutative.tsv.gz \
+    --tf-expr data/gene_expr/TF_K562_GM12878_expression.csv \
+    --cell K562 \
+    --out-dir results/var2gene_results
+```
+
+| Option              | Default                        | Description                                            |
+|---------------------|--------------------------------|--------------------------------------------------------|
+| `--var2tfbs`        | (required)                     | VAR2TFBS output CSV (common or rare)                   |
+| `--footprint-bed`   | (required)                     | FOODIE footprint BED file                              |
+| `--enhancer-bed`    | (required)                     | ABC-FP EnhancerList BED from Neighborhoods             |
+| `--abc-predictions` | (required)                     | ABC-FP EnhancerPredictionsAllPutative TSV              |
+| `--tf-expr`         | (optional)                     | TF RNA expression CSV for cell-type annotation         |
+| `--cell`            | `K562`                         | Cell type for TF expression column lookup              |
+| `--abc-threshold`   | `0`                            | Minimum ABC score for gene assignment                  |
+| `--prefix`          | `comvar`                       | Output filename prefix (`comvar` or `rarevar`)         |
+| `--out-dir`         | `./results/var2gene_results`   | Output directory                                       |
+
+Output: `{cell}_{prefix}_ABC-FP-Full.csv` (variant-TF-gene table with rsID, TF, TF_change, TF expression, TargetGene, ABC.Score.FP, distance) and `{cell}_{prefix}_ABC-FP-Max.csv` (one row per variant with top ABC-FP-Max gene).
 
 ## Methods
 

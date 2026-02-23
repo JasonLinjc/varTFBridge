@@ -26,8 +26,8 @@ params_macs:
 # These parameters are used to run the Run Candidate Regions portion of the abc code 
 params_candidate:
         # peakExtendFromSummit: 1
-        peakExtendFromSummit: 0
-        minPeakWidth: 200
+        peakExtendFromSummit: 30
+        minPeakWidth: 500
         nStrongestPeaks: 200000
 
 # These parameters are used to run the Run Neighborhoods portion of the abc code
