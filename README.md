@@ -34,7 +34,7 @@ Common-variant genome-wide association studies have identified thousands of nonc
 Using 490,640 UK Biobank whole-genome sequences across 13 erythroid traits:
 
 - K562 FOODIE footprints show ~70-fold heritability enrichment for erythroid traits (comprising <0.5% of the genome)
-- Identified **206 common variants** and **18 rare variants** linked to TF binding sites and target genes
+- Identified **248 common variants** and **19 rare variants** linked to TF binding sites and target genes
 - Successfully recapitulated the causal variant **rs112233623**, revealing how disruption of GATA1/TAL1 co-binding alters CCND3 regulation to drive variation in red blood cell count
 
 ## Installation
@@ -68,7 +68,7 @@ cd varTFBridge
 | Common variant VAR2TFBS | `scripts/comvar_overlap_foodie_footprints.py` | Step 1 — Overlap GWFM common variants with FOODIE footprint BED files               |
 | Common variant VAR2TFBS | `scripts/comvar_var2tfbs.py`                  | Step 2 — Predict variant effects on TF binding via FIMO motif scanning              |
 | Rare variant VAR2TFBS  | `scripts/rarevar_var2tfbs.py`                | Identify driver rare variants from burden-test LOO and predict TF binding effects   |
-| Variant-to-gene        | `scripts/link_var2gene.py`                   | Link variants to target genes via ABC-FP-Max footprint-gene scores                  |
+| Variant-to-gene with ABC-FP-Max  | `scripts/link_var2gene.py`                   | Link variants to target genes via ABC-FP-Max footprint-gene scores                  |
 
 ## Data
 

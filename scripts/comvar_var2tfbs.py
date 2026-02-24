@@ -245,6 +245,11 @@ def run_fimo(motifs, fasta_path, ext_bp, threshold=0.0001):
     df["foodie_id"] = df["sequence_name"].str.split("|").str[2]
     df["pos_var"] = df["var_locus"].str.split(":").str[1].astype(int)
 
+    # Compute per-variant pad from ref allele length (indel window extension)
+    ref_allele = df["var_locus"].str.split(":").str[2]
+    ref_len = ref_allele.str.len()
+    df["pad"] = ref_len.where(ref_len > 1, 0)
+
     fp_parts = df["foodie_id"].str.split(":")
     df["chrom_fp"] = fp_parts.str[0]
     fp_coords = fp_parts.str[1].str.split("-")
@@ -252,8 +257,9 @@ def run_fimo(motifs, fasta_path, ext_bp, threshold=0.0001):
     df["end_fp"] = fp_coords.str[1].astype(int)
 
     # Map motif coordinates back to genomic coordinates
-    df["start_motif"] = df["start"] - ext_bp + df["start_fp"]
-    df["end_motif"] = df["end"] - ext_bp + df["start_fp"]
+    # Account for indel pad: window_start = fp_start - ext_bp - pad
+    df["start_motif"] = df["start"] - ext_bp - df["pad"] + df["start_fp"]
+    df["end_motif"] = df["end"] - ext_bp - df["pad"] + df["start_fp"]
 
     # Keep only hits where the variant falls within the motif
     df["var_in_motif"] = (df["pos_var"] >= df["start_motif"]) & (
