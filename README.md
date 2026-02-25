@@ -102,7 +102,7 @@ Genome-wide fine-mapping (GWFM) uses [GCTB 2.5.4](https://gctbhub.cloud.edu.au/s
 | **`.lcs`**    | Local credible sets            | CS, Size, PIP, PGV, PGVenrich, PEP, SNP (comma-separated), ENSGID_hg19, GeneName_hg19        |
 | **`.lcsRes`** | Credible set summary           | PIP/PEP thresholds, # sets, avg size, estimated causal variants, variance explained            |
 
-**Blood cell traits analysed** (13 erythroid + 2 others):
+**Erythroid traits analysed** (13):
 
 | Trait   | Description                                | Trait   | Description                                |
 |---------|--------------------------------------------|---------|--------------------------------------------|
