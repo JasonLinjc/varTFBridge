@@ -17,9 +17,9 @@ Usage:
     python scripts/link_var2gene.py \
         --var2tfbs results/comvar_var2tfbs_results/K562_var2tfbs.csv \
         --footprint-bed data/FOODIE_footprints/K562.merged.hg38.bed \
-        --enhancer-bed ABC_FP_results/K562_FOODIE_ATAC/Neighborhoods/EnhancerList.bed \
-        --abc-predictions ABC_FP_results/K562_FOODIE_ATAC/Predictions/EnhancerPredictionsAllPutative.tsv.gz \
-        --tf-expr data/gene_expr/TF_K562_GM12878_expression.csv \
+        --enhancer-bed data/ABC_FP_results/K562_FOODIE_ATAC/Neighborhoods/EnhancerList.bed \
+        --abc-predictions data/ABC_FP_results/K562_FOODIE_ATAC/Predictions/EnhancerPredictionsAllPutative.tsv.gz \
+        --tf-expr data/gene_expr/K562_ENCFF485RIA_gene.tsv \
         --cell K562 \
         --out-dir results/var2gene_results
 """
@@ -96,12 +96,21 @@ def load_abc_predictions(path):
 
 
 def load_tf_expression(path, cell):
-    """Load TF RNA expression CSV and extract cell-specific TPM column."""
-    df = pd.read_csv(path)
-    tpm_col = f"{cell}_rna_tpm"
-    if tpm_col not in df.columns:
-        raise ValueError(f"TF expression file must contain column: {tpm_col}")
-    return df[["TF", tpm_col]].rename(columns={tpm_col: f"TF_{cell}_rna_tpm"})
+    """Load TF RNA expression (ENCODE RNA-seq, max isoform TPM per gene).
+
+    For co-binding TFs (e.g. GATA1::TAL1), returns max TPM of components.
+    """
+    df = pd.read_csv(path, sep='\t', usecols=['gene_name', 'tpm'])
+    df = df.groupby('gene_name')['tpm'].max().reset_index()
+    expr_lookup = dict(zip(df['gene_name'].str.upper(), df['tpm']))
+
+    def lookup_tf_expr(tf_name):
+        components = tf_name.split('::')
+        tpms = [expr_lookup.get(c.upper()) for c in components]
+        tpms = [t for t in tpms if t is not None]
+        return max(tpms) if tpms else None
+
+    return expr_lookup, lookup_tf_expr
 
 
 def parse_args():
@@ -118,7 +127,7 @@ def parse_args():
     )
     p.add_argument(
         "--enhancer-bed", required=True,
-        help="ABC-FP EnhancerList BED (e.g. ABC_FP_results/K562_FOODIE_ATAC/Neighborhoods/EnhancerList.bed)",
+        help="ABC-FP EnhancerList BED (e.g. data/ABC_FP_results/K562_FOODIE_ATAC/Neighborhoods/EnhancerList.bed)",
     )
     p.add_argument(
         "--abc-predictions", required=True,
@@ -126,7 +135,7 @@ def parse_args():
     )
     p.add_argument(
         "--tf-expr", default=None,
-        help="TF RNA expression CSV (e.g. data/gene_expr/TF_K562_GM12878_expression.csv)",
+        help="TF RNA expression TSV (e.g. data/gene_expr/K562_ENCFF485RIA_gene.tsv)",
     )
     p.add_argument(
         "--cell", default="K562",
@@ -180,8 +189,8 @@ def main():
     # Annotate with TF expression
     if args.tf_expr:
         print_info(f"Loading TF expression from {args.tf_expr}")
-        tf_expr = load_tf_expression(args.tf_expr, args.cell)
-        var_tf = var_tf.merge(tf_expr, on="TF", how="left")
+        _, lookup_tf_expr = load_tf_expression(args.tf_expr, args.cell)
+        var_tf[tpm_col] = var_tf["TF"].apply(lookup_tf_expr)
         print_info(f"{(var_tf[tpm_col] > 0).sum():,} entries with TF expression > 0")
 
     # Step 2: Map footprints to ATAC enhancer regions

@@ -69,6 +69,10 @@ cd varTFBridge
 | Common variant VAR2TFBS | `scripts/comvar_var2tfbs.py`                  | Step 2 — Predict variant effects on TF binding via FIMO motif scanning              |
 | Rare variant VAR2TFBS  | `scripts/rarevar_var2tfbs.py`                | Identify driver rare variants from burden-test LOO and predict TF binding effects   |
 | Variant-to-gene with ABC-FP-Max  | `scripts/link_var2gene.py`                   | Link variants to target genes via ABC-FP-Max footprint-gene scores                  |
+| AlphaGenome scoring    | `scripts/alphag_score_variants.py`           | Score VAR2TFBS variants using AlphaGenome variant effect prediction API             |
+| Linkage table          | `scripts/merge_comvar_linkage_table.py`      | Merge common variant associations into a variant→TF→gene→trait linkage table        |
+| Linkage table          | `scripts/merge_rarevar_linkage_table.py`     | Merge rare variant driver results into a variant→TF→gene→trait linkage table        |
+| TF ChIP annotation     | `scripts/annotate_comvar_alphag_tf_chip.py`  | Annotate PIP>0.7 variants with AlphaGenome TF ChIP scores (co-binding TF split)    |
 
 ## Data
 
@@ -261,9 +265,9 @@ Links variants to target genes by bridging: **variant → footprint → enhancer
 python scripts/link_var2gene.py \
     --var2tfbs results/comvar_var2tfbs_results/K562_var2tfbs.csv \
     --footprint-bed data/FOODIE_footprints/K562.merged.hg38.bed \
-    --enhancer-bed ABC_FP_results/K562_FOODIE_ATAC/Neighborhoods/EnhancerList.bed \
-    --abc-predictions ABC_FP_results/K562_FOODIE_ATAC/Predictions/EnhancerPredictionsAllPutative.tsv.gz \
-    --tf-expr data/gene_expr/TF_K562_GM12878_expression.csv \
+    --enhancer-bed data/ABC_FP_results/K562_FOODIE_ATAC/Neighborhoods/EnhancerList.bed \
+    --abc-predictions data/ABC_FP_results/K562_FOODIE_ATAC/Predictions/EnhancerPredictionsAllPutative.tsv.gz \
+    --tf-expr data/gene_expr/K562_ENCFF485RIA_gene.tsv \
     --cell K562 \
     --out-dir results/var2gene_results
 ```
@@ -281,6 +285,173 @@ python scripts/link_var2gene.py \
 | `--out-dir`         | `./results/var2gene_results`   | Output directory                                       |
 
 Output: `{cell}_{prefix}_ABC-FP-Full.csv` (variant-TF-gene table with rsID, TF, TF_change, TF expression, TargetGene, ABC.Score.FP, distance) and `{cell}_{prefix}_ABC-FP-Max.csv` (one row per variant with top ABC-FP-Max gene).
+
+### AlphaGenome Variant Effect Prediction
+
+[AlphaGenome](https://github.com/google-deepmind/alphagenome) (Google DeepMind) predicts variant effects across gene expression, splicing, chromatin features, and contact maps at single-bp resolution from up to 1Mbp DNA sequences. Used as orthogonal validation of VAR2TFBS motif-based predictions.
+
+**Setup** (requires an [API key](https://deepmind.google.com/science/alphagenome), free for non-commercial use):
+
+```bash
+conda create -n alphagenome_env python=3.12 -y
+conda activate alphagenome_env
+pip install ./alphagenome
+```
+
+**Example — score a variant**:
+
+```python
+from alphagenome.data import genome
+from alphagenome.models import dna_client
+
+model = dna_client.create('YOUR_API_KEY')
+
+variant = genome.Variant(
+    chromosome='chr6', position=41957259,
+    reference_bases='C', alternate_bases='T',
+)
+interval = genome.Interval(chromosome='chr6', start=41432972, end=42481548)
+
+outputs = model.predict_variant(
+    interval=interval, variant=variant,
+    ontology_terms=['CL:0000038'],  # erythroid progenitor cell
+    requested_outputs=[dna_client.OutputType.CHIP_SEQ],
+)
+```
+
+See `alphagenome/colabs/` for tutorials: `quick_start.ipynb`, `batch_variant_scoring.ipynb`, `example_analysis_workflow.ipynb`, and `visualization_modality_tour.ipynb`.
+
+### AlphaGenome Batch Variant Scoring
+
+Score all VAR2TFBS variants with AlphaGenome's recommended CenterMaskScorer configurations (11 output types, 19 scorers). Supports both common and rare variant ID formats, with checkpoint/resume for large batches.
+
+```bash
+# Rare variants (no allele-src needed, ~48s for 19 variants)
+python scripts/alphag_score_variants.py \
+    --var2tfbs results/rarevar_var2tfbs_results/K562_rarevar_var2tfbs.csv \
+    --api-key $ALPHAGENOME_API_KEY \
+    --cell K562 \
+    --prefix rarevar \
+    --out-dir results/alphag_scores
+
+# Common variants (requires allele-src and ref-genome for coordinate resolution)
+python scripts/alphag_score_variants.py \
+    --var2tfbs results/comvar_var2tfbs_results/K562_var2tfbs.csv \
+    --allele-src results/comvar_footprint_overlap_credible/K562.merged.hg38 \
+    --ref-genome data/reference/hg38.fa \
+    --api-key $ALPHAGENOME_API_KEY \
+    --cell K562 \
+    --prefix comvar \
+    --out-dir results/alphag_scores
+```
+
+| Option              | Default                    | Description                                                    |
+|---------------------|----------------------------|----------------------------------------------------------------|
+| `--var2tfbs`        | (required)                 | VAR2TFBS output CSV (common or rare)                           |
+| `--api-key`         | (required)                 | AlphaGenome API key                                            |
+| `--allele-src`      | (optional)                 | Per-trait overlap CSVs for common variant coordinate resolution |
+| `--ref-genome`      | (optional)                 | hg38.fa for ref/alt allele determination                       |
+| `--cell`            | `K562`                     | Cell type (`K562` or `GM12878`)                                |
+| `--prefix`          | `comvar`                   | Output filename prefix (`comvar` or `rarevar`)                 |
+| `--output-types`    | all recommended            | Subset of scorer output types (e.g. `CHIP_TF DNASE ATAC`)     |
+| `--seq-length`      | `1MB`                      | Sequence length (`16KB`, `100KB`, `500KB`, `1MB`)              |
+| `--batch-size`      | `50`                       | Variants per checkpoint for resume capability                  |
+| `--tf-change-filter`| (none)                     | Only score variants with specific TF_change (e.g. `Create Disrupt`) |
+
+Output: `{cell}_{prefix}_alphag_scores.tsv` — tidy scores with columns: rsID, variant_id, output_type, variant_scorer, track_name, raw_score, quantile_score, transcription_factor, biosample_name, etc.
+
+### Variant→TF→Gene→Trait Linkage Tables
+
+Merge all pipeline outputs into a single linkage table per variant type, showing the full chain: variant → TF binding change → target gene → trait association. Each row represents one rsID × TF × trait combination.
+
+**Common variants** — merges snpRes overlap, VAR2TFBS, ABC-FP-Max gene linkage, TF expression, and AlphaGenome scores:
+
+```bash
+python scripts/merge_comvar_linkage_table.py --project-root .
+```
+
+Output: `results/K562_comvar2grn.csv` — 3,282 rows, 263 variants, 367 TFs, 245 genes, 15 traits. Key columns: rsID, Chromosome, Position, trait, PIP, PEP, TF, TF_change, TF_K562_rna_tpm, TargetGene, ABC.Score.FP, alphag_H3K27ac_score, alphag_ATAC_score.
+
+**Rare variants** — merges burden test driver variants, VAR2TFBS, ABC-FP-Max gene linkage, TF expression, and AlphaGenome scores:
+
+```bash
+python scripts/merge_rarevar_linkage_table.py --project-root .
+```
+
+Output: `results/K562_rarevar2grn.csv` — 609 rows, 19 variants, 99 TFs, 15 genes, 13 traits. Key columns: rsID, Chromosome, Position, trait, burden_p, driver_loo_p, driver_MAC, TF, TF_change, TF_K562_rna_tpm, TargetGene, ABC.Score.FP, alphag_H3K27ac_score, alphag_ATAC_score.
+
+### AlphaGenome TF ChIP Annotation for High-PIP Variants
+
+Annotate common variants with PIP > 0.7 with AlphaGenome TF ChIP DIFF_LOG2_SUM scores. For co-binding TFs (e.g. GATA1::TAL1), each component TF is expanded into a separate row with its own AlphaGenome score and K562 RNA expression.
+
+```bash
+python scripts/annotate_comvar_alphag_tf_chip.py --project-root .
+```
+
+Output: `results/K562_comvar_pip70_alphag_tf_chip.csv` — one row per variant × component TF. Key columns: rsID, max_PIP, TF_motif, TF_change, TF_alphag, TF_alphag_K562_rna_tpm, alphag_TF_chip_score, alphag_TF_chip_quantile.
+
+## Results
+
+All pipeline outputs are stored under `results/`:
+
+### `results/comvar_footprint_overlap/`
+
+Variant-footprint overlap results from Step 1. Contains per-cell-type subdirectories with per-trait CSVs and merged BED files.
+
+| File                                         | Description                                                               |
+|----------------------------------------------|---------------------------------------------------------------------------|
+| `{cell}.merged.hg38/{trait}_{cell}.csv`      | Per-trait variant-footprint overlaps with PIP, PEP, PEP_cs, CS_id         |
+| `GWFM_variants_in_{cell}.merged.hg38.bed`    | Merged BED of all unique variants in footprints (input for Step 2)        |
+
+### `results/comvar_var2tfbs_results/`
+
+Common variant TF binding effect predictions from Step 2.
+
+| File                  | Description                                           | Key columns                                               |
+|-----------------------|-------------------------------------------------------|-----------------------------------------------------------|
+| `K562_var2tfbs.csv`   | TF binding changes for all variants (957 rsIDs)       | rsID, TF, TF_change, p-value_ref, p-value_alt, foodie_id |
+| `fasta/`              | Reference and alternative FASTA sequences for FIMO    |                                                           |
+
+### `results/rarevar_var2tfbs_results/`
+
+Rare variant driver identification and TF binding effect predictions.
+
+| File                           | Description                                        | Key columns                                              |
+|--------------------------------|----------------------------------------------------|----------------------------------------------------------|
+| `driver_variants_summary.csv`  | Driver variants per significant trait-footprint     | trait, footprint, burden_p, driver_variant, driver_MAC   |
+| `K562_rarevar_var2tfbs.csv`    | TF binding changes for driver rare variants         | rsID, TF, TF_change, p-value_ref, p-value_alt, foodie_id |
+| `fasta/`                       | Reference and alternative FASTA sequences           |                                                          |
+
+### `results/var2gene_results/`
+
+Variant-to-gene linking via ABC-FP-Max scores for both common and rare variants.
+
+| File                             | Description                                                    | Key columns                                               |
+|----------------------------------|----------------------------------------------------------------|-----------------------------------------------------------|
+| `K562_comvar_ABC-FP-Max.csv`     | Top target gene per common variant (951 variants, 853 genes)   | rsID, TargetGene, ABC.Score, ABC.Score.FP, distance       |
+| `K562_comvar_ABC-FP-Full.csv`    | All variant-TF-gene links with TF info                         | rsID, TF, TF_change, TF_K562_rna_tpm, TargetGene, ABC.Score |
+| `K562_rarevar_ABC-FP-Max.csv`    | Top target gene per rare variant (19 variants, 15 genes)       | rsID, TargetGene, ABC.Score, ABC.Score.FP, distance       |
+| `K562_rarevar_ABC-FP-Full.csv`   | All rare variant-TF-gene links with TF info                    | rsID, TF, TF_change, TF_K562_rna_tpm, TargetGene, ABC.Score |
+
+### `results/alphag_scores/`
+
+AlphaGenome variant effect prediction scores across 11 output types (CHIP_TF, CHIP_HISTONE, DNASE, ATAC, RNA_SEQ, CAGE, PROCAP, CONTACT_MAPS, SPLICE_JUNCTIONS, SPLICE_SITES, SPLICE_SITE_USAGE).
+
+| File                                  | Description                                              | Key columns                                                      |
+|---------------------------------------|----------------------------------------------------------|------------------------------------------------------------------|
+| `K562_rarevar_alphag_scores.tsv`      | AlphaGenome scores for 19 rare variants (~1.1M rows)     | rsID, variant_id, output_type, track_name, raw_score, quantile_score |
+| `K562_comvar_alphag_scores.tsv`       | AlphaGenome scores for common variants                   | rsID, variant_id, output_type, track_name, raw_score, quantile_score |
+| `checkpoints/`                        | Intermediate checkpoint TSVs for resume capability       |                                                                  |
+
+### `results/` (linkage tables)
+
+Integrated variant→TF→gene→trait linkage tables merging all pipeline outputs.
+
+| File                                   | Description                                                         | Key columns                                                              |
+|----------------------------------------|---------------------------------------------------------------------|--------------------------------------------------------------------------|
+| `K562_comvar2grn.csv`                  | Common variant linkage table (263 variants, 367 TFs, 245 genes)     | rsID, trait, PIP, TF, TF_change, TargetGene, ABC.Score.FP                |
+| `K562_rarevar2grn.csv`                 | Rare variant linkage table (19 variants, 99 TFs, 15 genes)          | rsID, trait, burden_p, TF, TF_change, TargetGene, ABC.Score.FP           |
+| `K562_comvar_pip70_alphag_tf_chip.csv` | PIP>0.7 variants with AlphaGenome TF ChIP scores (co-binding split) | rsID, TF_motif, TF_alphag, alphag_TF_chip_score, alphag_TF_chip_quantile |
 
 ## Methods
 
