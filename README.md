@@ -488,6 +488,15 @@ Integrated variant→TF→gene→trait linkage tables merging all pipeline outpu
 | **ABC-FP-Max**   | Footprint-to-gene linkage scoring combining activity and chromatin contact                              |
 | **AlphaGenome**  | Deep learning model for cell-type-specific variant effect prediction                                    |
 
+## Third-Party Code
+
+This project includes the following third-party components, each retaining its original license (see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)):
+
+| Component | Directory | License | Source |
+|-----------|-----------|---------|--------|
+| AlphaGenome (Google DeepMind) | `alphagenome/` | Apache 2.0 | [github.com/google-deepmind/alphagenome](https://github.com/google-deepmind/alphagenome) |
+| ABC-Enhancer-Gene-Prediction (Broad Institute) | `ABC-FP/` | MIT | [github.com/broadinstitute/ABC-Enhancer-Gene-Prediction](https://github.com/broadinstitute/ABC-Enhancer-Gene-Prediction) |
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
