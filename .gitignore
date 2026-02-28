@@ -5,6 +5,9 @@ data/GWFM_erythroids/snpRes_hg38/
 data/GWFM_erythroids/gcs/
 data/reference/hg38.fa
 data/alphagenome_results/K562_credible_comvar_pip70.tsv
+results/alphag_scores/
+data/ABC_FP_results/
+data/GSEA_MSigDB/*.csv
 
 # OS files
 .DS_Store
@@ -16,6 +19,7 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
+varTFBridge_plot.ipynb
 
 # Output directories
 overlap_results/

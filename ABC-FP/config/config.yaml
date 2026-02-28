@@ -5,7 +5,7 @@
 biosamplesTable: "config/config_FOODIE_ATAC.tsv"  # replace with your own config/config_biosamples.tsv
 
 ### OUTPUT DATA
-results_dir: "../ABC_FP_results/"
+results_dir: "../data/ABC_FP_results/"
 
 ### REFERENCE FILES
 ref:

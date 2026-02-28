@@ -34,7 +34,7 @@ Common-variant genome-wide association studies have identified thousands of nonc
 Using 490,640 UK Biobank whole-genome sequences across 13 erythroid traits:
 
 - K562 FOODIE footprints show ~70-fold heritability enrichment for erythroid traits (comprising <0.5% of the genome)
-- Identified **248 common variants** and **19 rare variants** linked to TF binding sites and target genes
+- Identified **224 common variants** and **19 rare variants** linked to TF binding sites and target genes
 - Successfully recapitulated the causal variant **rs112233623**, revealing how disruption of GATA1/TAL1 co-binding alters CCND3 regulation to drive variation in red blood cell count
 
 ## Installation
@@ -59,10 +59,34 @@ cd varTFBridge
 - Bismark (v0.24.2)
 - Trim Galore (v0.6.10)
 
+## Quick Start
+
+Run the full common or rare variant pipeline end-to-end:
+
+```bash
+# Common variant pipeline (9 steps)
+bash scripts/run_comvar_pipeline.sh
+
+# Rare variant pipeline (4 steps)
+bash scripts/run_rarevar_pipeline.sh
+```
+
+Both scripts support resuming from a specific step, running a single step, or skipping AlphaGenome scoring:
+
+```bash
+bash scripts/run_comvar_pipeline.sh --from 4      # resume from step 4
+bash scripts/run_comvar_pipeline.sh --only 5      # run step 5 only
+bash scripts/run_rarevar_pipeline.sh --skip-alphag # skip AlphaGenome (requires API key)
+```
+
+AlphaGenome scoring is automatically skipped if `ALPHAGENOME_API_KEY` is not set.
+
 ## Scripts
 
 | Pipeline               | Script                                       | Description                                                                         |
 |------------------------|----------------------------------------------|-------------------------------------------------------------------------------------|
+| **Runner**             | `scripts/run_comvar_pipeline.sh`             | Run all common variant pipeline steps end-to-end                                    |
+| **Runner**             | `scripts/run_rarevar_pipeline.sh`            | Run all rare variant pipeline steps end-to-end                                      |
 | Data preparation       | `scripts/comvar_liftover_snpRes.py`          | Liftover GWFM `.snpRes` files from hg19 to hg38 coordinates                        |
 | Data preparation       | `scripts/comvar_filter_credible_set.py`      | Filter variants by PIP threshold and annotate with LCS credible-set info            |
 | Common variant VAR2TFBS | `scripts/comvar_overlap_foodie_footprints.py` | Step 1 — Overlap GWFM common variants with FOODIE footprint BED files               |
@@ -73,6 +97,7 @@ cd varTFBridge
 | Linkage table          | `scripts/merge_comvar_linkage_table.py`      | Merge common variant associations into a variant→TF→gene→trait linkage table        |
 | Linkage table          | `scripts/merge_rarevar_linkage_table.py`     | Merge rare variant driver results into a variant→TF→gene→trait linkage table        |
 | TF ChIP annotation     | `scripts/annotate_comvar_alphag_tf_chip.py`  | Annotate PIP>0.7 variants with AlphaGenome TF ChIP scores (co-binding TF split)    |
+| TF ChIP annotation     | `scripts/extract_var2tfbs_extra.py`          | Extract TFBS changes for TFs not scored by AlphaGenome TF ChIP                      |
 
 ## Data
 
@@ -370,7 +395,7 @@ Merge all pipeline outputs into a single linkage table per variant type, showing
 python scripts/merge_comvar_linkage_table.py --project-root .
 ```
 
-Output: `results/K562_comvar2grn.csv` — 3,282 rows, 263 variants, 367 TFs, 245 genes, 15 traits. Key columns: rsID, Chromosome, Position, trait, PIP, PEP, TF, TF_change, TF_K562_rna_tpm, TargetGene, ABC.Score.FP, alphag_H3K27ac_score, alphag_ATAC_score.
+Output: `results/K562_comvar2grn.csv` — 2,977 rows, 224 variants, 342 TFs, 208 genes, 13 traits. Key columns: rsID, Chromosome, Position, trait, PIP, PEP, TF, TF_change, TF_K562_rna_tpm, TargetGene, ABC.Score.FP, alphag_H3K27ac_score, alphag_ATAC_score.
 
 **Rare variants** — merges burden test driver variants, VAR2TFBS, ABC-FP-Max gene linkage, TF expression, and AlphaGenome scores:
 
@@ -409,7 +434,7 @@ Common variant TF binding effect predictions from Step 2.
 
 | File                  | Description                                           | Key columns                                               |
 |-----------------------|-------------------------------------------------------|-----------------------------------------------------------|
-| `K562_var2tfbs.csv`   | TF binding changes for all variants (957 rsIDs)       | rsID, TF, TF_change, p-value_ref, p-value_alt, foodie_id |
+| `K562_var2tfbs.csv`   | TF binding changes for all variants (847 rsIDs)       | rsID, TF, TF_change, p-value_ref, p-value_alt, foodie_id |
 | `fasta/`              | Reference and alternative FASTA sequences for FIMO    |                                                           |
 
 ### `results/rarevar_var2tfbs_results/`
@@ -428,7 +453,7 @@ Variant-to-gene linking via ABC-FP-Max scores for both common and rare variants.
 
 | File                             | Description                                                    | Key columns                                               |
 |----------------------------------|----------------------------------------------------------------|-----------------------------------------------------------|
-| `K562_comvar_ABC-FP-Max.csv`     | Top target gene per common variant (951 variants, 853 genes)   | rsID, TargetGene, ABC.Score, ABC.Score.FP, distance       |
+| `K562_comvar_ABC-FP-Max.csv`     | Top target gene per common variant (839 variants, 757 genes)   | rsID, TargetGene, ABC.Score, ABC.Score.FP, distance       |
 | `K562_comvar_ABC-FP-Full.csv`    | All variant-TF-gene links with TF info                         | rsID, TF, TF_change, TF_K562_rna_tpm, TargetGene, ABC.Score |
 | `K562_rarevar_ABC-FP-Max.csv`    | Top target gene per rare variant (19 variants, 15 genes)       | rsID, TargetGene, ABC.Score, ABC.Score.FP, distance       |
 | `K562_rarevar_ABC-FP-Full.csv`   | All rare variant-TF-gene links with TF info                    | rsID, TF, TF_change, TF_K562_rna_tpm, TargetGene, ABC.Score |
@@ -449,7 +474,7 @@ Integrated variant→TF→gene→trait linkage tables merging all pipeline outpu
 
 | File                                   | Description                                                         | Key columns                                                              |
 |----------------------------------------|---------------------------------------------------------------------|--------------------------------------------------------------------------|
-| `K562_comvar2grn.csv`                  | Common variant linkage table (263 variants, 367 TFs, 245 genes)     | rsID, trait, PIP, TF, TF_change, TargetGene, ABC.Score.FP                |
+| `K562_comvar2grn.csv`                  | Common variant linkage table (224 variants, 342 TFs, 208 genes)     | rsID, trait, PIP, TF, TF_change, TargetGene, ABC.Score.FP                |
 | `K562_rarevar2grn.csv`                 | Rare variant linkage table (19 variants, 99 TFs, 15 genes)          | rsID, trait, burden_p, TF, TF_change, TargetGene, ABC.Score.FP           |
 | `K562_comvar_pip70_alphag_tf_chip.csv` | PIP>0.7 variants with AlphaGenome TF ChIP scores (co-binding split) | rsID, TF_motif, TF_alphag, alphag_TF_chip_score, alphag_TF_chip_quantile |
 

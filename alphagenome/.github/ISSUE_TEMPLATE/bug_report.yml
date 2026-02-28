@@ -1,0 +1,48 @@
+---
+name: Bug report
+description: >-
+  Report a bug or unexpected behavior to help us improve AlphaGenome.
+labels:
+- bug
+
+body:
+- type: markdown
+  attributes:
+    value: >
+      ## Thank you for helping us improve AlphaGenome!
+
+      * Please verify that your issue has not been reported using
+      [Issue search][issue search].
+
+      * If you have a question about usage, please
+      consider [starting a discussion][Discussions].
+
+      * If you prefer a non-templated issue report, click [here][Raw report].
+
+      [Discussions]: https://www.alphagenomecommunity.com/
+
+      [issue search]: https://github.com/google-deepmind/alphagenome/search?q=is%3Aissue&type=issues
+
+      [Raw report]: https://github.com/google-deepmind/alphagenome/issues/new?template=none
+- type: textarea
+  attributes:
+    label: Description
+    description: A concise description of the bug.
+    placeholder: |
+      Text may use markdown formatting.
+      ```python
+      # for codeblocks, use triple backticks
+      ```
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: System info (python version, alphagenome version, etc.)
+    description: >-
+      Include the output of `import alphagenome; alphagenome.__version__`
+    placeholder: |
+      ```
+      ...
+      ```
+  validations:
+    required: true
