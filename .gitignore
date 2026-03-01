@@ -25,6 +25,18 @@ varTFBridge_plot.ipynb
 overlap_results/
 data/results/
 
+# ChIP-seq TF analysis
+scripts/chip_peak_motif_scan.py
+scripts/chip_peak_tfbs_clustering.py
+scripts/chip_peak_tfbs_cooccurrence.py
+data/TF_ChIP/
+data/JASPAR_MEME/
+results/chip_peak_motif_scan_report.html
+results/chip_peak_tfbs_clustering/
+results/chip_peak_tfbs_clustering_report.html
+results/chip_peak_tfbs_cooccurrence/
+results/chip_peak_tfbs_cooccurrence_report.html
+
 # Claude Code
 CLAUDE.md
 .claude/
