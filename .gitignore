@@ -37,6 +37,9 @@ results/chip_peak_tfbs_clustering_report.html
 results/chip_peak_tfbs_cooccurrence/
 results/chip_peak_tfbs_cooccurrence_report.html
 
+# Manuscript
+manuscript/
+
 # Claude Code
 CLAUDE.md
 .claude/
