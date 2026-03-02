@@ -34,7 +34,7 @@ Common-variant genome-wide association studies have identified thousands of nonc
 Using 490,640 UK Biobank whole-genome sequences across 13 erythroid traits:
 
 - K562 FOODIE footprints show ~70-fold heritability enrichment for erythroid traits (comprising <0.5% of the genome)
-- Identified **224 common variants** and **19 rare variants** linked to TF binding sites and target genes
+- Identified **209 common variants** and **18 rare variants** linked to TF binding sites and target genes, modulating **207 unique target genes**
 - Successfully recapitulated the causal variant **rs112233623**, revealing how disruption of GATA1/TAL1 co-binding alters CCND3 regulation to drive variation in red blood cell count
 
 ## Installation
