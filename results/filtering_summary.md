@@ -32,23 +32,23 @@
 
 | Step | Count | Genes | Filter |
 |------|-------|-------|--------|
-| K562 FOODIE footprints | 188,484 | — | All footprints tested in burden analysis |
-| Significant footprints | 24 | — | Burden test Bonferroni (p < 2.65e-07) |
-| MAC > 30 footprints | 21 | — | At least one LOO variant with MAC > 30 |
-| Driver variants (LOO) | 21 | — | Best leave-one-out variant per footprint |
-| VAR2TFBS (FIMO hit) | 19 | — | Variant falls within a TF motif |
-| Var-to-Gene | 19 | 15 | ABC-FP-Max gene assignment (ABC.Score > 0.015) |
-| **rarevar2grn (final)** | **19** | **15** | **Full linkage table** |
+| K562 FOODIE footprints tested | 177,270 | — | Footprints with rare variants in burden analysis |
+| Significant footprints | 24 | — | Burden test Bonferroni (p < 2.82e-07) |
+| MAC > 30 footprints | 23 | — | At least one LOO variant with MAC > 30 |
+| Driver variants (LOO) | 23 | — | Best leave-one-out variant per footprint |
+| VAR2TFBS (FIMO hit) | 19 | — | Variant falls within a TF motif (4 lost) |
+| Var-to-Gene | 19 | 15 | ABC-FP-Max gene assignment |
+| **rarevar2grn (ABC filtered)** | **18** | **14** | **ABC.Score > 0.015** |
 
-### Rare variant TFBS altered
+### Rare variant TFBS altered (before ABC filter)
 
 - **143** unique variant–TF pairs across **99** TFs
 - TF binding change: Create (60), Disrupt (55), Decrease (20), Increase (8)
 
 ### Rare variant filtering strategy
 
-1. **Burden test**: Rare variant burden test across 188,484 K562 FOODIE footprints per trait. Significance determined by Bonferroni correction: -log10(0.05 / 188,484) = 6.58.
+1. **Burden test**: Rare variant burden test across 177,270 K562 FOODIE footprints per trait. Significance determined by Bonferroni correction: -log10(0.05 / 177,270) = 6.55.
 2. **MAC > 30**: Footprints must contain at least one rare variant with minor allele count > 30 in the leave-one-out (LOO) analysis, ensuring sufficient statistical power.
 3. **Driver variant identification**: For each significant footprint, the LOO variant with the strongest effect (largest drop in burden test significance upon removal) is selected as the driver.
-4. **FIMO motif scanning**: Driver variant position must fall within a JASPAR TF binding motif hit. 2 driver variants are lost at this step (no motif at variant position).
-5. **ABC-FP-Max gene assignment**: Each driver variant is linked to its top target gene via ABC model (ABC.Score > 0.015). 1 variant loses its gene link at this step (best ABC = 0.012, below threshold), but all 19 variants with FIMO hits are retained because they all have ABC.Score > 0.015.
+4. **FIMO motif scanning**: Driver variant position must fall within a JASPAR TF binding motif hit. 4 driver variants are lost at this step (no motif at variant position).
+5. **ABC-FP-Max gene assignment**: Each driver variant is linked to its top target gene via ABC model. 1 variant (DRAGEN:chr16:318854:T:C → PDIA2) has ABC.Score = 0.012, below the 0.015 threshold.
