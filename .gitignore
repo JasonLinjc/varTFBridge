@@ -7,6 +7,7 @@ data/reference/hg38.fa
 data/alphagenome_results/K562_credible_comvar_pip70.tsv
 results/alphag_scores/
 data/ABC_FP_results/
+data/FOODIE_footprints/*.bed
 data/GSEA_MSigDB/*.csv
 
 # OS files
